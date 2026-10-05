@@ -274,7 +274,8 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/battle.js` | a csata (hullámok, képességek, jutalmak) |
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
 | `script/game/art.js` | minden grafika kódból (csempék, épületek, effektek) |
-| `script/game/terrain.js` | a völgy „3D-s" domborzata: napfény és vetett árnyék, lágy vidékhatárok, hegycsúcsok |
+| `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
+| `script/game/terrain.js` | árnyalt hegycsúcsok a hegyvidékben (egy textúralapon) |
 | `script/game/hud.js`, `state.js`, `sfx.js`, `path.js`, `lore.js` | felület, mentés, hangok, A*, rúnakövek |
 | `kaland_api.php`, `inc/game.php` | szerver: tenyésztés, kikelés, szelídítés, mentés |
 | `sql/migrate_game.sql` | a két új tábla és a `generacio`/`vonasok` oszlop |
@@ -297,12 +298,14 @@ féle (pl. tűz + jég = Gőzrobbanás, vihar + méreg = Savas eső, kő + árny
 Kőkripta). Minél több rész „rezonál" a párossal, annál erősebb (+8%
 részenként). A vad sárkányok is használják. Táblázat: `COMBOS` a `rules.js`-ben.
 
-**A völgy megjelenése:** a csempék fölött domborzati rétegek
-(`terrain.js`): északnyugati napfény, a hegyek mögött vetett árnyék, a
-parttól távolodva mélyülő víz, habos partvonal, hullámosan egymásba olvadó
-vidékek; a hegyvidékben árnyalt, havas csúcsok; a fáknak és szikláknak
-árnyéka van. WebGL-en a kamera enyhe tilt-shift („makett") és vignetta
-hatást kap (2 magos gépen kimarad).
+**A völgy megjelenése:** minden indításkor, egyszer készül — futás közben
+nincs rajta extra effekt. A csempék (`tiles.js`) képpontonként rajzolódnak,
+varratmentesen, bal felső fénnyel domborítva (fű, ösvény, homok, hó, hamu,
+szikla, sziklafal, jég). A vidékhatárokra ritka szegélyrétegek kerülnek: a
+szomszéd anyaga hullámos, puha széllel, enyhe árnyékkal lóg át (hó a fűre,
+fű az ösvényre…). A partokon homok, nedves sáv, hab és sekély víz, lekerekített
+sarkokkal. A fák és sziklák árnyéka a képükbe van rajzolva; a hegyvidékben
+árnyalt, havas csúcsok (`terrain.js`).
 
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös

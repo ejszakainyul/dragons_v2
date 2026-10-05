@@ -1,225 +1,13 @@
 /* =====================================================================
-   Domborzat — a völgy „3D-s" megjelenése
+   Hegycsúcsok — a hegyvidék „kiemelkedik" a síkból
    ---------------------------------------------------------------------
-   A csempés talaj fölé három, alacsony felbontású (csempénként 8 px)
-   réteg kerül, lineáris szűréssel a térkép méretére nagyítva — így az
-   átmenetek lágyak, és csak néhány százezer képpontot kell kiszámolni:
-
-     relief-tint   a vidékek színe elmosva (lágy partél, nincs „csemperács")
-     relief-shade  SZORZÓ réteg: domborzat-árnyékolás (északnyugati nap),
-                   vetett árnyék a hegyek mögött, mélyedések sötétje,
-                   a víz a parttól távolodva mélyül
-     relief-light  ÖSSZEADÓ réteg: a napos lejtők meleg fénye, csillanó hó
-
-   A hegyvidék belsejébe ezen felül árnyalt csúcsok (sprite-ok) kerülnek,
-   y szerint rendezve — a hegyek így kiemelkednek a síkból.
+   Árnyalt, többcsúcsú gerincek (havasak északon, izzó repedésesek a
+   hamuvidéken). Minden változat EGY textúralapon van (képkockákként),
+   így a Phaser egy kötegben rajzolja őket.
    ===================================================================== */
-import { B, TILE, makeNoise, fbm } from './world.js';
+import { B, TILE } from './world.js';
 import { mulberry32 } from './rules.js';
-import { TILE_MARGIN, TILE_SPACING } from './art.js';
 
-const RES = 8;                                   // képpont csempénként a rétegekben
-const SUN = (() => {                             // északnyugat felől, kb. 40°-os magasságban
-  const v = [-0.55, -0.65, 0.6];
-  const l = Math.hypot(...v);
-  return v.map((x) => x / l);
-})();
-const SHADOW_COL = [0.36, 0.42, 0.62];           // az árnyék hűvös, kékes
-
-/** Csempénkénti tömb bilineáris mintavétele (a csempeközéppontok között). */
-function sampler(arr, W, H) {
-  return (u, v) => {
-    u = Math.max(0, Math.min(W - 1.001, u - 0.5));
-    v = Math.max(0, Math.min(H - 1.001, v - 0.5));
-    const x0 = u | 0, y0 = v | 0, fx = u - x0, fy = v - y0;
-    const i = y0 * W + x0;
-    const a = arr[i], b = arr[i + 1], c = arr[i + W], d = arr[i + W + 1];
-    return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy;
-  };
-}
-
-/** A csempék átlagszíne a tileset vásznáról. */
-function tileColors(scene) {
-  const src = scene.textures.get('tiles').getSourceImage();
-  const ctx = src.getContext ? src.getContext('2d') : null;
-  if (!ctx) return null;
-  const cols = 8, S = TILE, M = TILE_MARGIN, P = TILE_SPACING;
-  const data = ctx.getImageData(0, 0, src.width, src.height).data;
-  const out = [];
-  const rows = Math.round(src.height / (S + P));
-  for (let t = 0; t < cols * rows; t++) {
-    const x0 = (t % cols) * (S + P) + M, y0 = Math.floor(t / cols) * (S + P) + M;
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let y = y0; y < y0 + S; y += 3) for (let x = x0; x < x0 + S; x += 3) {
-      const k = (y * src.width + x) * 4;
-      r += data[k]; g += data[k + 1]; b += data[k + 2]; n++;
-    }
-    out.push([r / n, g / n, b / n]);
-  }
-  return out;
-}
-
-/**
- * A három domborzati réteg textúrája.
- * @returns {{tint:string, shade:string, light:string}} a textúrakulcsok
- */
-export function buildRelief(scene, world) {
-  const { w: W, h: H, height, biome } = world;
-  const PW = W * RES, PH = H * RES;
-  const n1 = makeNoise(world.seed + 101), n2 = makeNoise(world.seed + 102), n3 = makeNoise(world.seed + 103);
-
-  const N = W * H;
-  const mount = new Float32Array(N), water = new Float32Array(N), snow = new Float32Array(N);
-  for (let i = 0; i < N; i++) {
-    mount[i] = biome[i] === B.MOUNTAIN ? 1 : 0;
-    water[i] = biome[i] === B.WATER || biome[i] === B.BRIDGE ? 1 : 0;
-    snow[i] = world.snowy[i] && !world.ashy[i] ? 1 : 0;
-  }
-  // Tágabb környezet átlagmagassága (a mélyedések árnyékához)
-  const wide = new Float32Array(N);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    let s = 0, c = 0;
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-      s += height[ny * W + nx]; c++;
-    }
-    wide[y * W + x] = s / c;
-  }
-  /* Lassan változó zajmezők negyedcsempénként (bilineárisan mintavételezve):
-     a torzítás és a nagy foltok — így a drága zajfüggvény jóval ritkábban fut */
-  const Q = 4, QW = W * Q, QH = H * Q;
-  const warpU = new Float32Array(QW * QH), warpV = new Float32Array(QW * QH), patchF = new Float32Array(QW * QH);
-  for (let y = 0; y < QH; y++) for (let x = 0; x < QW; x++) {
-    const u = (x + 0.5) / Q, v = (y + 0.5) / Q, k = y * QW + x;
-    warpU[k] = (fbm(n3, u * 0.7, v * 0.7, 2) - 0.5) * 1.1;
-    warpV[k] = (fbm(n3, u * 0.7 + 40, v * 0.7, 2) - 0.5) * 1.1;
-    patchF[k] = 0.92 + fbm(n2, u / 7 + 50, v / 7, 2) * 0.16;
-  }
-  const quarter = (arr) => { const f = sampler(arr, QW, QH); return (u, v) => f(u * Q, v * Q); };
-  const wuAt = quarter(warpU), wvAt = quarter(warpV), patchAt = quarter(patchF);
-
-  const hAt = sampler(height, W, H), mAt = sampler(mount, W, H), wAt = sampler(water, W, H);
-  const sAt = sampler(snow, W, H), wideAt = sampler(wide, W, H);
-
-  /* --- Részletes magasság: a hegyekben töredezett gerincek --- */
-  const hd = new Float32Array(PW * PH);
-  for (let py = 0; py < PH; py++) {
-    const v = (py + 0.5) / RES;
-    for (let px = 0; px < PW; px++) {
-      const u = (px + 0.5) / RES;
-      let h = hAt(u, v);
-      const m = mAt(u, v);
-      if (m > 0.01) {
-        // „Gerinces" zaj: 1 − |2n − 1| éles hátakat ad
-        const r = 1 - Math.abs(2 * fbm(n1, u * 0.85, v * 0.85, 3) - 1);
-        h += m * (r - 0.55) * 1.1;
-      }
-      h += (n2(u * 1.6, v * 1.6) - 0.5) * 0.05;
-      hd[py * PW + px] = h;
-    }
-  }
-
-  const shade = document.createElement('canvas');
-  const light = document.createElement('canvas');
-  const tint = document.createElement('canvas');
-  for (const c of [shade, light, tint]) { c.width = PW; c.height = PH; }
-  const sImg = shade.getContext('2d').createImageData(PW, PH);
-  const lImg = light.getContext('2d').createImageData(PW, PH);
-  const tImg = tint.getContext('2d').createImageData(PW, PH);
-  const sd = sImg.data, ld = lImg.data, td = tImg.data;
-
-  const lxy = Math.hypot(SUN[0], SUN[1]);
-  const dirX = SUN[0] / lxy, dirY = SUN[1] / lxy;
-  const tanSun = SUN[2] / lxy;
-  const STEP = RES * 0.5;                         // fél csempénként lépünk a nap felé
-  const K = 1.0;                                  // a lejtők meredekségének szorzója
-
-  const colors = tileColors(scene);
-  const tc = colors ? (() => {
-    const r = new Float32Array(N), g = new Float32Array(N), b = new Float32Array(N);
-    for (let i = 0; i < N; i++) { const c = colors[world.ground[i]] || [60, 100, 70]; r[i] = c[0]; g[i] = c[1]; b[i] = c[2]; }
-    return [sampler(r, W, H), sampler(g, W, H), sampler(b, W, H)];
-  })() : null;
-
-  for (let py = 0; py < PH; py++) {
-    const v = (py + 0.5) / RES;
-    for (let px = 0; px < PW; px++) {
-      const u = (px + 0.5) / RES;
-      const i = py * PW + px;
-      const h0 = hd[i];
-
-      // Normálvektor a szomszédos képpontokból
-      const xl = px > 0 ? hd[i - 1] : h0, xr = px < PW - 1 ? hd[i + 1] : h0;
-      const yu = py > 0 ? hd[i - PW] : h0, yd = py < PH - 1 ? hd[i + PW] : h0;
-      const gx = (xr - xl) * RES / 2 * K, gy = (yd - yu) * RES / 2 * K;
-      const nl = Math.hypot(gx, gy, 1);
-      const diffuse = (-gx * SUN[0] - gy * SUN[1] + SUN[2]) / nl;
-      const ratio = Math.max(0.2, Math.min(1.7, diffuse / SUN[2]));
-
-      // Vetett árnyék: mi takarja el a napot?
-      let shadow = 0;
-      for (let k = 1; k <= 14 && shadow < 1; k++) {
-        const sx = Math.round(px + dirX * STEP * k), sy = Math.round(py + dirY * STEP * k);
-        if (sx < 0 || sy < 0 || sx >= PW || sy >= PH) break;
-        const need = h0 + tanSun * k * 0.5;
-        const over = hd[sy * PW + sx] - need;
-        if (over > 0) shadow = Math.max(shadow, Math.min(1, over / 0.18));
-      }
-
-      const ao = Math.max(0, Math.min(0.32, (wideAt(u, v) - hAt(u, v)) * 0.55));
-      let val = Math.min(ratio, 1) * (1 - shadow * 0.4) * (1 - ao);
-
-      // Torzított koordináta: a vidékhatárok és a partvonal ne a csemperácsot kövessék
-      const wu = u + wuAt(u, v), wv = v + wvAt(u, v);
-
-      // Víz: a parttól távolodva sötétebb, kékebb
-      const wm = wAt(u, v);
-      const depth = wm * Math.max(0, Math.min(1, (-hAt(u, v) - 0.04) / 0.3));
-      let r = SHADOW_COL[0] + (1 - SHADOW_COL[0]) * val;
-      let g = SHADOW_COL[1] + (1 - SHADOW_COL[1]) * val;
-      let b = SHADOW_COL[2] + (1 - SHADOW_COL[2]) * val;
-      r *= 1 - depth * 0.5; g *= 1 - depth * 0.35; b *= 1 - depth * 0.18;
-      sd[i * 4] = r * 255; sd[i * 4 + 1] = g * 255; sd[i * 4 + 2] = b * 255; sd[i * 4 + 3] = 255;
-
-      // Napos lejtő: meleg fény; a havon erősebb csillanás
-      const hi = Math.max(0, ratio - 1) * (1 - shadow);
-      const sn = sAt(u, v);
-      // Hab a partvonalon (a torzított vízmaszk ~0,45-ös szintvonala)
-      const shore = wAt(wu, wv);
-      const fl = Math.max(0, 1 - Math.abs(shore - 0.42) / 0.09);
-      const foam = fl && fl * (0.6 + n2(u * 4, v * 4) * 0.8);
-      const amt = hi * (0.34 - sn * 0.22) + foam * 0.22 * (1 - sn);
-      ld[i * 4] = Math.min(255, amt * 255); ld[i * 4 + 1] = Math.min(255, amt * 222); ld[i * 4 + 2] = Math.min(255, amt * (170 + sn * 70));
-      ld[i * 4 + 3] = 255;
-
-      /* Vidékhatár: a szomszédos vidékek színe hullámos, zajjal torzított
-         vonal mentén olvad egymásba. Ahol a kevert szín eltér a csempe
-         saját színétől (vagyis határon vagyunk), ott a réteg szinte fedő —
-         a csempe belsejében alig látszik, a rajzolt minta megmarad. */
-      if (tc) {
-        const patch = patchAt(u, v) * (0.94 + n2(u * 3.1 + 7, v * 3.1) * 0.12);
-        const r0 = tc[0](wu, wv), g0 = tc[1](wu, wv), b0 = tc[2](wu, wv);
-        const own = colors[world.ground[Math.min(H - 1, v | 0) * W + Math.min(W - 1, u | 0)]] || [r0, g0, b0];
-        const dist = Math.hypot(r0 - own[0], g0 - own[1], b0 - own[2]);
-        td[i * 4] = r0 * patch; td[i * 4 + 1] = g0 * patch; td[i * 4 + 2] = b0 * patch;
-        td[i * 4 + 3] = 255 * Math.max(0.14, Math.min(0.95, (dist - 5) / 30));
-      }
-    }
-  }
-  shade.getContext('2d').putImageData(sImg, 0, 0);
-  light.getContext('2d').putImageData(lImg, 0, 0);
-  tint.getContext('2d').putImageData(tImg, 0, 0);
-  for (const k of ['relief-shade', 'relief-light', 'relief-tint']) if (scene.textures.exists(k)) scene.textures.remove(k);
-  scene.textures.addCanvas('relief-shade', shade);
-  scene.textures.addCanvas('relief-light', light);
-  if (tc) scene.textures.addCanvas('relief-tint', tint);
-  return { shade: 'relief-shade', light: 'relief-light', tint: tc ? 'relief-tint' : null };
-}
-
-/* =====================================================================
-   Hegycsúcsok
-   ===================================================================== */
 const PEAK_SIZES = [[112, 92], [150, 118], [88, 70]];
 const PEAK_VARIANTS = 3;                          // méretenként ennyi különböző rajz
 const PEAK_STYLE = {
@@ -351,21 +139,28 @@ function drawPeak(ctx, w, h, style, rng) {
   });
 }
 
-/** A csúcs-textúrák: három vidék × három méret × néhány változat. */
+/** A csúcs-textúrák egy lapon: három vidék × három méret × néhány változat. */
 export function buildPeaks(scene) {
+  if (scene.textures.exists('peaks')) return;
   const rng = mulberry32(9090);
-  for (const kind of Object.keys(PEAK_STYLE)) {
-    PEAK_SIZES.forEach(([w, h], v) => {
-      for (let k = 0; k < PEAK_VARIANTS; k++) {
-        const key = `peak-${kind}${v}-${k}`;
-        if (scene.textures.exists(key)) continue;
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        drawPeak(c.getContext('2d'), w, h, PEAK_STYLE[kind], rng);
-        scene.textures.addCanvas(key, c);
-      }
-    });
-  }
+  const kinds = Object.keys(PEAK_STYLE);
+  const cellW = Math.max(...PEAK_SIZES.map(([w]) => w)) + 4, cellH = Math.max(...PEAK_SIZES.map(([, h]) => h)) + 4;
+  const cols = PEAK_SIZES.length * PEAK_VARIANTS;
+  const sheet = document.createElement('canvas');
+  sheet.width = cols * cellW; sheet.height = kinds.length * cellH;
+  const ctx = sheet.getContext('2d');
+  const frames = [];
+  kinds.forEach((kind, row) => PEAK_SIZES.forEach(([w, h], v) => {
+    for (let k = 0; k < PEAK_VARIANTS; k++) {
+      const x = (v * PEAK_VARIANTS + k) * cellW, y = row * cellH;
+      ctx.save(); ctx.translate(x, y);
+      drawPeak(ctx, w, h, PEAK_STYLE[kind], rng);
+      ctx.restore();
+      frames.push([`${kind}${v}-${k}`, x, y, w, h]);
+    }
+  }));
+  const tex = scene.textures.addCanvas('peaks', sheet);
+  for (const [name, x, y, w, h] of frames) tex.add(name, 0, x, y, w, h);
 }
 
 /**
@@ -383,7 +178,7 @@ export function peakSpots(world) {
     if (nearPoi(x, y)) continue;
     const i = y * W + x;
     const hgt = height[i];
-    if (rng() > 0.42 + Math.min(0.35, (hgt - 0.9) * 0.25)) continue;
+    if (rng() > 0.26 + Math.min(0.3, (hgt - 0.9) * 0.2)) continue;
     const big = mt(x, y - 3) && hgt > 1.3 && rng() < 0.45;
     out.push({
       x: x * TILE + TILE / 2 + (rng() - 0.5) * 22,
@@ -391,7 +186,7 @@ export function peakSpots(world) {
       kind: world.ashy[i] ? 'ash' : world.snowy[i] || hgt > 2.1 ? 'snow' : 'rock',
       v: big ? 1 : rng() < 0.4 ? 2 : 0,
       k: Math.floor(rng() * PEAK_VARIANTS),
-      scale: 0.8 + rng() * 0.4,
+      scale: 0.95 + rng() * 0.45,
     });
   }
   return out;

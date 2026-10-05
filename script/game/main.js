@@ -20,7 +20,7 @@ import { OverworldScene } from './overworld.js';
 import { BattleScene } from './battle.js';
 import { Story } from './story.js';
 import { layoutPlaces, playerSeed } from './places.js';
-import { buildRelief, buildPeaks } from './terrain.js';
+import { buildPeaks } from './terrain.js';
 
 const CFG = window.GAME || {};
 const shell = document.getElementById('gameShell');
@@ -46,10 +46,7 @@ class BootScene extends Phaser.Scene {
     setLoading('Csempék és fák faragása…', 62);
     buildTileset(this);
     buildSprites(this);
-    setLoading('Hegyek emelése, árnyékok vetése…', 70);
-    await new Promise((r) => setTimeout(r, 20));
     buildPeaks(this);
-    buildRelief(this, g.world);
 
     // A textúrák a játék közös kezelőjében élnek — bármelyik jelenet eléri
     g.gfx = { textures: this.game.textures };

@@ -16,6 +16,7 @@ import { TILE, T, B } from './world.js';
 import { findPath } from './path.js';
 import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING } from './art.js';
 import { peakSpots } from './terrain.js';
+import { fringeLayers } from './tiles.js';
 import { CAVES, SKILLS, levelOf, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
 import { esc } from './hud.js';
 import { LORE } from './lore.js';
@@ -47,13 +48,13 @@ export class OverworldScene extends Phaser.Scene {
     const tiles = map.addTilesetImage('tiles', 'tiles', TILE, TILE, TILE_MARGIN, TILE_SPACING);
     this.groundLayer = map.createLayer(0, tiles, 0, 0).setDepth(0);
 
-    /* --- Domborzat (terrain.js): lágy vidékhatárok, napfény és árnyék --- */
-    const fullMap = (key) => this.add.image(0, 0, key).setOrigin(0).setDisplaySize(world.w * TILE, world.h * TILE);
-    if (this.textures.exists('relief-tint')) fullMap('relief-tint').setDepth(0.5);
-    if (this.textures.exists('relief-shade')) {
-      fullMap('relief-shade').setBlendMode(Phaser.BlendModes.MULTIPLY).setDepth(1);
-      fullMap('relief-light').setBlendMode(Phaser.BlendModes.ADD).setDepth(1.1);
-    }
+    /* --- Szegélyek (tiles.js): a szomszéd vidék anyaga hullámosan rálóg a
+       csempére — külön, ritka csemperétegek, csak a látható cellák rajzolódnak */
+    fringeLayers(world).forEach((data, i) => {
+      const fm = this.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
+      const ft = fm.addTilesetImage('tiles', 'tiles', TILE, TILE, TILE_MARGIN, TILE_SPACING);
+      fm.createLayer(0, ft, 0, 0).setDepth(0.1 + i * 0.1);
+    });
 
     /* --- Köd ---
        Egy csempe = egy képpont egy apró vásznon, amit lineáris szűréssel
@@ -95,7 +96,6 @@ export class OverworldScene extends Phaser.Scene {
     cam.setRoundPixels(true);
     this.#fitZoom();
     this.scale.on('resize', () => this.#fitZoom());
-    this.#lens(cam);
     cam.fadeIn(600, 5, 7, 15);
 
     /* --- Bemenet --- */
@@ -151,19 +151,6 @@ export class OverworldScene extends Phaser.Scene {
     this.cameras.main.setZoom(z);
   }
 
-  /**
-   * „Dioráma" a kamerán (csak WebGL): a kép széle elmosódik (tilt-shift),
-   * így a völgy makettszerű, mélységet kap; enyhe vignetta és élénkebb
-   * színek. Gyenge gépen (≤ 2 mag) kimarad.
-   */
-  #lens(cam) {
-    if (this.renderer.type !== Phaser.WEBGL || !cam.postFX) return;
-    if ((navigator.hardwareConcurrency || 4) <= 2) return;
-    cam.postFX.addColorMatrix().saturate(0.12);
-    cam.postFX.addTiltShift(0.45, 1, 0.1, 1, 1, 0.6);
-    cam.postFX.addVignette(0.5, 0.5, 0.9, 0.3);
-  }
-
   async #buildAvatar() {
     const lead = this.g.state.party[0];
     if (this.avatar) { this.avatar.destroy(); this.avatar = null; }
@@ -180,25 +167,20 @@ export class OverworldScene extends Phaser.Scene {
 
   #placeDecor() {
     const { world } = this;
-    // Vetett árnyék: a nap északnyugat felől süt, az árnyék délkelet felé dől
-    const castShadow = (x, y, w, h, a = 0.42) => this.add.image(x + w * 0.22, y - h * 0.15, 'shadow')
-      .setDisplaySize(w, h).setAlpha(a).setAngle(18).setDepth(2);
-    // Hegycsúcsok a hegyvidék belsejében
-    if (this.textures.exists('peak-rock0-0')) {
+    // Hegycsúcsok a hegyvidék belsejében (egyetlen textúralapról: egy kötegben rajzolódnak)
+    if (this.textures.exists('peaks')) {
       for (const pk of peakSpots(world)) {
-        this.add.image(pk.x, pk.y, `peak-${pk.kind}${pk.v}-${pk.k}`).setOrigin(0.5, 1).setScale(pk.scale).setDepth(pk.y);
+        this.add.image(pk.x, pk.y, 'peaks', `${pk.kind}${pk.v}-${pk.k}`).setOrigin(0.5, 1).setScale(pk.scale).setDepth(pk.y);
       }
     }
     for (const t of world.trees) {
       const key = t.kind === 'pine' ? `pine${t.v}` : t.kind === 'pine-snow' ? `pine-snow${t.v}` : `${t.kind}${t.v}`;
       const x = t.x * TILE + TILE / 2 + ((t.x * 7 + t.y * 13) % 9) - 4;
       const y = t.y * TILE + TILE - 2;
-      castShadow(x, y, t.kind === 'dead' ? 40 : 58, 20, t.kind === 'dead' ? 0.3 : 0.45);
       this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(y);
     }
     for (const b of world.boulders) {
       const y = b.y * TILE + TILE - 2;
-      castShadow(b.x * TILE + TILE / 2, y, 50, 16);
       this.add.image(b.x * TILE + TILE / 2, y, `boulder${b.v}${b.snow ? 's' : ''}`).setOrigin(0.5, 1).setDepth(y);
     }
     // Apró díszek: bokrok, gombák, nád, kövek… (átjárhatók, de az y szerint takarnak)

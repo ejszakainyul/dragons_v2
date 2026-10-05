@@ -66,6 +66,28 @@ function ridge(w, h, top, rough, color, seed) {
   return c;
 }
 
+/** A sarki fény függönyei — egyszer, egy varratmentesen ismétlődő csíkra rajzolva. */
+function drawAurora(W, H) {
+  const w = Math.max(800, Math.round(W)), h = Math.round(H * 0.42);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const bands = [[0x4f, 0xff, 0xb0, 0.24, 0.0], [0x4f, 0xd6, 0xff, 0.17, 1.7], [0xb1, 0x8c, 0xff, 0.13, 3.1]];
+  ctx.globalCompositeOperation = 'lighter';
+  for (const [r, g, b, a, ph] of bands) {
+    for (let x = 0; x < w; x += 2) {
+      const p = (x / w) * Math.PI * 2;                                   // egész periódusok: a csík körbeér
+      const y = h * 0.25 + Math.sin(p * 2 + ph) * h * 0.14 + Math.sin(p * 5 - ph) * h * 0.05;
+      const len = h * (0.38 + 0.18 * Math.sin(p * 3 + ph));
+      const al = a * (0.55 + 0.45 * Math.sin(p * 7 + ph));
+      const lg = ctx.createLinearGradient(0, y, 0, y + len);
+      lg.addColorStop(0, `rgba(${r},${g},${b},0)`); lg.addColorStop(0.3, `rgba(${r},${g},${b},${al})`); lg.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = lg; ctx.fillRect(x, y, 2, len);
+    }
+  }
+  return c;
+}
+
 /**
  * Lejátssza a zárójelenetet.
  * @returns {Promise<void>} amikor a játékos továbblép
@@ -137,7 +159,7 @@ export async function playEnding(g) {
   const cv = el.querySelector('.es-sky');
   const ctx = cv.getContext('2d');
   let W = 0, H = 0, scene = null;
-  const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+  const dpr = Math.min(1.25, window.devicePixelRatio || 1);
   const rng = mulberry32(77);
   const layout = () => {
     W = el.clientWidth; H = el.clientHeight;
@@ -151,6 +173,7 @@ export async function playEnding(g) {
         { c: ridge(W, H, H * 0.72, H * 0.08, '#0c0918', 12), v: 14 },
         { c: ridge(W, H, H * 0.82, H * 0.06, '#05040b', 13), v: 26 },
       ],
+      aurora: drawAurora(W, H),
       embers: Array.from({ length: 70 }, () => ({ x: rng() * W, y: H + rng() * H, v: 20 + rng() * 50, r: 0.8 + rng() * 2, p: rng() * 6 })),
       meteors: [],
     };
@@ -175,19 +198,17 @@ export async function playEnding(g) {
       ctx.fillRect(s.x, s.y, s.r, s.r);
     }
     ctx.globalAlpha = 1;
-    // Sarki fény: hullámzó, függőleges fénycsíkok (összeadó keveréssel)
+    // Sarki fény: az előre megrajzolt függönyök lassan úsznak és hullámzanak
     ctx.globalCompositeOperation = 'lighter';
-    const bands = [[0x4f, 0xff, 0xb0, 0.22, 0.0], [0x4f, 0xd6, 0xff, 0.16, 1.7], [0xb1, 0x8c, 0xff, 0.12, 3.1]];
-    for (const [r, gr, b, a, ph] of bands) {
-      for (let x = 0; x < W; x += 3) {
-        const y = H * 0.2 + Math.sin(x / W * 5 + t * 0.35 + ph) * H * 0.07 + Math.sin(x / W * 13 - t * 0.6 + ph) * H * 0.025;
-        const len = H * (0.16 + 0.08 * Math.sin(x / W * 7 + t * 0.5 + ph));
-        const lg = ctx.createLinearGradient(0, y, 0, y + len);
-        const fade = a * (0.6 + 0.4 * Math.sin(x / W * 9 + t + ph)) * Math.min(1, t / 3);
-        lg.addColorStop(0, `rgba(${r},${gr},${b},0)`); lg.addColorStop(0.35, `rgba(${r},${gr},${b},${fade})`); lg.addColorStop(1, `rgba(${r},${gr},${b},0)`);
-        ctx.fillStyle = lg; ctx.fillRect(x, y, 3, len);
-      }
+    const au = scene.aurora, fadeIn = Math.min(1, t / 3);
+    for (let k = 0; k < 2; k++) {
+      const off = ((t * (10 + k * 6)) % au.width + au.width) % au.width;
+      ctx.globalAlpha = fadeIn * (0.75 + 0.25 * Math.sin(t * (0.5 + k * 0.3) + k));
+      const y = H * 0.12 + Math.sin(t * 0.3 + k * 2) * H * 0.02 + k * H * 0.03;
+      ctx.drawImage(au, -off, y, au.width, au.height * (1 + 0.06 * Math.sin(t * 0.4 + k)));
+      ctx.drawImage(au, au.width - off, y, au.width, au.height * (1 + 0.06 * Math.sin(t * 0.4 + k)));
     }
+    ctx.globalAlpha = 1;
     // Hold
     const mx = W * 0.76, my = H * 0.24, mr = Math.min(W, H) * 0.075;
     const halo = ctx.createRadialGradient(mx, my, mr * 0.6, mx, my, mr * 4);
