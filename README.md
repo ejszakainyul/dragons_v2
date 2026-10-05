@@ -349,6 +349,12 @@ ajánlott szintű csapat a II–IV. fokon 90/90/71%, Níðhöggr 20. szint kör�
   töltik: ha megtelik, megtántorodik, két körig +40% sebzést kap, és a
   feltöltött lehelete elvész. A kábítást lerázza, de az is töri.
   Számok: `BOSS` a `rules.js`-ben (szimulációval hangolva).
+- **A saga vége** (`ending.js`): az epilógus után teljes képernyős, animált zárókép:
+  éjszakai ég sarki fénnyel és hullócsillagokkal, telihold, a Világfa sziluettje,
+  csúszó hegyvonulatok, felszálló parázs, és a játékos saját sárkányai repülnek át
+  a hold előtt. Előtte kirajzolódó rúnakör, betűnként felragyogó cím, felpörgő
+  statisztikák, a csapat bemutatása és stáblista. Kattintásra azonnal kibomlik;
+  a krónikából (ᛉ) bármikor újranézhető.
 
 Minden új állapot a mentett játékállás JSON-jában van (`story`, `learned`, `train`,
 `ultis`, `relics`, `techSrc`, `places`) — szerveroldali változás nem kellett, mert

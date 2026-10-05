@@ -1077,3 +1077,131 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
 .tr-shrine-note { font-size: .82rem; color: #a9f1de; }
 .tr-tech.is-hidden { opacity: .62; border-style: dashed; }
 .tr-tech.is-hidden small b { color: #ffd08a; }
+
+/* =====================================================================
+   A saga vége — animált zárókép (script/game/ending.js)
+   ===================================================================== */
+.end-screen {
+  position: absolute; inset: 0; z-index: 60; overflow: hidden;
+  background: #000; cursor: pointer; opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.end-screen.is-in { opacity: 1; }
+.end-screen.is-out { opacity: 0; transition-duration: .8s; }
+.es-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.es-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 35%, rgba(0,0,0,.55) 100%);
+}
+.es-content {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(6px, 1.6vh, 16px); padding: 16px; text-align: center; color: #f4ead2;
+}
+/* minden elem rejtve indul, és elmosódásból emelkedik elő */
+.es-content > * { opacity: 0; transform: translateY(18px); filter: blur(8px); transition: opacity 1.1s ease, transform 1.1s cubic-bezier(.2,.8,.2,1), filter 1.1s ease; }
+.es-content > .is-on { opacity: 1; transform: none; filter: none; }
+
+.es-sigil { width: clamp(84px, 17vh, 190px); height: auto; overflow: visible; }
+.es-sigil.is-on { animation: es-spin 60s linear 3s infinite; }
+.es-ring { fill: none; stroke: #ffd36b; stroke-width: 1.6; stroke-dasharray: 600; stroke-dashoffset: 600; filter: drop-shadow(0 0 4px #ffb347); }
+.es-ring-2 { stroke: #4fffe0; stroke-dasharray: 4 6; filter: drop-shadow(0 0 4px #4fffe0); }
+.es-ring-3 { stroke-width: 1; }
+.es-sigil.is-on .es-ring { animation: es-draw 2.2s ease forwards; }
+.es-sigil.is-on .es-ring-2 { animation: es-dash 2.2s ease .3s forwards, es-ring-spin 12s linear infinite; transform-origin: 100px 100px; }
+.es-sigil.is-on .es-ring-3 { animation-delay: .6s; }
+.es-spoke { stroke: #4fffe0; stroke-width: 2; stroke-linecap: round; opacity: 0; }
+.es-sigil.is-on .es-spoke { animation: es-pop .4s ease forwards; animation-delay: calc(1s + var(--i) * 70ms); }
+.es-glyph {
+  font-family: var(--font-rune); font-size: 64px; fill: #ffe9b0; text-anchor: middle; dominant-baseline: central;
+  opacity: 0; filter: drop-shadow(0 0 10px #ffb347);
+}
+.es-sigil.is-on .es-glyph { animation: es-glyph 1.6s ease 1.6s forwards, es-pulse 3s ease-in-out 3.2s infinite; }
+
+.es-kicker { font-family: 'Cinzel', serif; letter-spacing: .3em; text-transform: uppercase; font-size: clamp(.7rem, 1.6vh, .9rem); color: #4fffe0; text-shadow: 0 0 10px rgba(79,255,224,.6); }
+.es-title {
+  margin: 0; font-family: 'Cinzel Decorative', 'Cinzel', serif; font-weight: 900;
+  font-size: clamp(30px, min(7vw, 9vh), 84px); line-height: 1; letter-spacing: .06em;
+  opacity: 1 !important; transform: none !important; filter: none !important;      /* a betűk animálnak, nem a sor */
+}
+.es-title span {
+  display: inline-block; opacity: 0; transform: translateY(-24px) scale(1.7); filter: blur(10px);
+  background: linear-gradient(100deg, #b8862e 0%, #ffe9a8 35%, #fff 50%, #ffe9a8 65%, #b8862e 100%);
+  background-size: 300% 100%; background-position: 100% 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 22px rgba(255,200,110,.0);
+}
+.es-title.is-on span {
+  animation: es-letter .8s cubic-bezier(.2,.9,.25,1.2) forwards, es-shine 4.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 85ms), calc(1.6s + var(--i) * 60ms);
+}
+.es-quote { max-width: 46ch; font-style: italic; font-size: clamp(.85rem, 2vh, 1.1rem); color: #e9dcc0; text-shadow: 0 2px 10px #000; }
+
+.es-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.es-stat {
+  min-width: 92px; padding: 8px 12px; border-radius: 12px;
+  background: rgba(10,8,24,.55); border: 1px solid rgba(255,211,107,.35); backdrop-filter: blur(4px);
+  box-shadow: 0 0 18px rgba(255,180,90,.12) inset;
+}
+.es-stat b { display: block; font-family: 'Cinzel', serif; font-size: clamp(1.2rem, 3vh, 1.7rem); color: #ffd36b; font-variant-numeric: tabular-nums; }
+.es-stat span { font-size: .75rem; color: #cfc3a8; letter-spacing: .05em; }
+
+.es-party { display: flex; gap: clamp(10px, 3vw, 34px); justify-content: center; }
+.es-dragon { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; transform: translateY(26px); }
+.es-party.is-on .es-dragon { animation: es-rise .9s cubic-bezier(.2,.8,.2,1) forwards, es-float 3.2s ease-in-out infinite; animation-delay: calc(var(--i) * 220ms), calc(1s + var(--i) * 400ms); }
+.es-dragon img {
+  width: clamp(54px, 10vh, 92px); height: clamp(54px, 10vh, 92px); border-radius: 50%; object-fit: contain;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 45%, transparent) 0%, rgba(0,0,0,0) 70%);
+  border: 2px solid color-mix(in srgb, var(--c) 70%, #fff); box-shadow: 0 0 22px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.es-dragon figcaption b { display: block; font-family: 'Cinzel', serif; font-size: .9rem; }
+.es-dragon figcaption small { color: #cfc3a8; font-size: .72rem; }
+
+.es-credits {
+  height: clamp(56px, 12vh, 130px); width: min(420px, 90vw); overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+}
+.es-credits.is-on .es-roll { animation: es-roll 18s linear infinite; }
+.es-roll { transform: translateY(100%); }
+.es-roll p { margin: 0 0 12px; font-size: .9rem; color: #f4ead2; }
+.es-roll small { display: block; font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: #a99cc8; }
+.es-roll .es-cr-head { font-family: 'Cinzel Decorative', 'Cinzel', serif; font-size: 1.1rem; color: #ffd36b; }
+.es-roll .es-cr-end { color: #4fffe0; font-family: 'Cinzel', serif; }
+
+.es-continue { pointer-events: none; }
+.es-continue.is-on { pointer-events: auto; animation: es-glow 2.4s ease-in-out 1s infinite; }
+.es-skip { position: absolute; right: 18px; bottom: 14px; margin: 0; font-size: .75rem; color: rgba(255,255,255,.45); animation: es-pulse 2s ease-in-out infinite; transition: opacity .5s; }
+.es-skip.is-off { opacity: 0; animation: none; }
+
+/* Kattintás után: minden azonnal a helyére kerül */
+.end-screen.is-skip .es-content > * { transition-duration: .35s; }
+.end-screen.is-skip .es-title span, .end-screen.is-skip .es-dragon, .end-screen.is-skip .es-spoke,
+.end-screen.is-skip .es-glyph, .end-screen.is-skip .es-ring { animation-delay: 0s !important; animation-duration: .4s; }
+.end-screen.is-skip .es-title span { animation: es-letter .4s ease forwards, es-shine 4.5s ease-in-out 1s infinite; }
+.end-screen.is-skip .es-dragon { animation: es-rise .4s ease forwards, es-float 3.2s ease-in-out 1s infinite; }
+
+@keyframes es-draw { to { stroke-dashoffset: 0; } }
+@keyframes es-dash { from { opacity: 0; } to { opacity: 1; stroke-dashoffset: 0; } }
+@keyframes es-ring-spin { to { transform: rotate(360deg); } }
+@keyframes es-spin { to { transform: rotate(-360deg); } }
+@keyframes es-pop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes es-glyph { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes es-pulse { 50% { opacity: .55; } }
+@keyframes es-letter {
+  60% { opacity: 1; filter: blur(0); text-shadow: 0 0 30px rgba(255,220,140,.9); }
+  to { opacity: 1; transform: none; filter: blur(0); text-shadow: 0 0 18px rgba(255,190,100,.45); }
+}
+@keyframes es-shine { 0%, 55% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@keyframes es-rise { to { opacity: 1; transform: none; } }
+@keyframes es-float { 50% { translate: 0 -8px; } }
+@keyframes es-roll { from { transform: translateY(100%); } to { transform: translateY(-100%); } }
+@keyframes es-glow { 50% { box-shadow: 0 0 26px rgba(255,180,90,.7); } }
+@media (prefers-reduced-motion: reduce) {
+  .es-content > *, .es-title span, .es-dragon { transition-duration: .01s; animation-duration: .01s !important; animation-iteration-count: 1 !important; }
+}
+
+@media (max-width: 520px) {
+  .es-stat { min-width: 70px; padding: 5px 8px; }
+  .es-stats { gap: 6px; }
+  .es-credits { height: 48px; }
+}
