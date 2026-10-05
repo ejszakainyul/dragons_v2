@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Egyszerű Sárkány Konfigurátor (gyerekeknek)</title>
+<style>
+  :root {
+    --dragon-color: #00cc88;
+    --dragon-size: 240px;
+    --dragon-glow: 5;
+    --dragon-radius: 18%;
+  }
+  body{
+    font-family: "Comic Sans MS", cursive;
+    background: linear-gradient(180deg,#dff8ff,#ffffff);
+    margin:0; padding:24px; color:#123;
+    display:flex; gap:24px; flex-wrap:wrap; justify-content:center;
+  }
+
+  /* Jobb oldali vezérlőpanel */
+  .panel{
+    width:320px;
+    background:rgba(255,255,255,0.9);
+    border-radius:12px;
+    padding:12px 16px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.12);
+  }
+  .panel h2{ margin:6px 0 12px; font-size:1.2rem; color:#074; text-align:center; }
+  .row{ margin:8px 0; display:flex; align-items:center; gap:10px; }
+  label{ flex:1; font-size:0.95rem; }
+  input[type="color"], input[type="range"], input[type="text"]{ flex:1; }
+  input[type="range"]{ width:140px; }
+  .small{ font-size:0.85rem; color:#666; }
+
+  /* Középső előnézet */
+  .preview {
+    width:420px;
+    background:linear-gradient(180deg,#fff,#f7fffb);
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.08);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .dragon-wrap{
+    width:100%;
+    height:320px;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+
+  /* A "sárkány" - SVG, színezhető */
+  .dragon {
+    width: var(--dragon-size);
+    height: var(--dragon-size);
+    transition: all .18s ease;
+    filter: drop-shadow(0 0 calc(10px * var(--dragon-glow)) var(--dragon-color));
+  }
+
+  .dragon-shadow { position:absolute; bottom:8px; width:60%; height:10px; background:rgba(0,0,0,0.12); border-radius:50%; filter:blur(6px); }
+
+  .name-box { font-weight:bold; color:#045; font-size:1.1rem; }
+
+  .btn {
+    background:#ffb703; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700;
+  }
+  .btn:hover{ transform:translateY(-2px); }
+
+  footer.small{ width:100%; text-align:center; margin-top:6px; color:#666; font-size:0.8rem; }
+</style>
+</head>
+<body>
+
+<!-- PREVIEW -->
+<div class="preview" role="region" aria-label="Sárkány előnézet">
+  <h2>✨ Sárkány előnézet</h2>
+  <div class="dragon-wrap">
+    <!-- egyszerű SVG sárkány (kicsi és aranyos) -->
+    <svg class="dragon" id="dragonSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- test -->
+      <ellipse cx="100" cy="110" rx="56" ry="36" fill="var(--dragon-color)"/>
+      <!-- fej -->
+      <circle cx="60" cy="80" r="22" fill="var(--dragon-color)"/>
+      <!-- szem -->
+      <circle cx="54" cy="76" r="4" fill="#fff"/>
+      <circle cx="54.5" cy="76" r="2" fill="#000"/>
+      <!-- szárny -->
+      <path d="M130 80 C160 60, 165 120, 130 110 C150 95, 150 95, 130 80" fill="rgba(255,255,255,0.14)" stroke="var(--dragon-color)" stroke-width="3"/>
+      <!-- farok -->
+      <path d="M152 120 C180 130, 190 120, 170 110" stroke="var(--dragon-color)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </svg>
+
+    <div class="dragon-shadow" id="dragonShadow" style="opacity:0.6"></div>
+  </div>
+
+  <div class="name-box" id="dragonNamePreview">Név: <span id="nameText">Zaffi</span></div>
+
+  <footer class="small">Érintsd meg a vezérlőket jobbra — közben változik az előnézet.</footer>
+</div>
+
+<!-- CONTROLS -->
+<div class="panel" role="region" aria-label="Vezérlők">
+  <h2>Könnyű beállítások (szerkeszthető a kódban)</h2>
+
+  <div class="row">
+    <label for="color">Szín</label>
+    <input id="color" type="color" value="#00cc88" aria-label="színválasztó">
+  </div>
+
+  <div class="row">
+    <label for="sizeRange">Méret <span id="sizeVal">120</span> px</label>
+    <input id="sizeRange" type="range" min="50" max="500" value="120">
+  </div>
+
+  <div class="row">
+    <label for="glow">Ragyogás</label>
+    <input id="glow" type="range" min="0" max="3" step="0.1" value="1">
+  </div>
+
+  <div class="row">
+    <label for="nameInput">Sárkány neve</label>
+    <input id="nameInput" type="text" placeholder="Írd ide a nevet" value="Zaffi">
+  </div>
+
+  <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+    <button class="btn" id="exportCss">Export CSS</button>
+    <button class="btn" id="resetBtn">Vissza az eredetihez</button>
+  </div>
+
+  <p class="small" style="margin-top:10px">
+    Tipp: a kódban a tetején vannak a *Easy settings* változók — ott gyorsan átírható a kezdő szín, méret és név.
+  </p>
+</div>
+
+<script>
+
+
+
+
+
+
+
+
+
+
+
+/*Easy settings*/
+
+
+
+/* ==========================
+   - DEFAULT_COLOR: kezdő szín. 6 karakterből álljon
+   - DEFAULT_SIZE: kezdő méret. 50től 500ig add meg
+   - DEFAULT_GLOW: kezdő ragyogás. 1től 3ig adhatod meg
+   - DEFAULT_NAME: kezdő név
+   =========================== */
+const DEFAULT_COLOR = "#30cc70";
+const DEFAULT_SIZE  = 400; // px
+const DEFAULT_GLOW  = 2.0;
+const DEFAULT_NAME  = "Sanyi";
+/* =========================== */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const colorEl = document.getElementById('color');
+const sizeRange = document.getElementById('sizeRange');
+const sizeVal = document.getElementById('sizeVal');
+const glowEl = document.getElementById('glow');
+const nameInput = document.getElementById('nameInput');
+
+const dragon = document.getElementById('dragonSvg');
+const nameText = document.getElementById('nameText');
+const exportBtn = document.getElementById('exportCss');
+const resetBtn = document.getElementById('resetBtn');
+const dragonShadow = document.getElementById('dragonShadow');
+
+function applySettings(color, size, glow, name){
+  // CSS változók beállítása
+  document.documentElement.style.setProperty('--dragon-color', color);
+  document.documentElement.style.setProperty('--dragon-size', size + 'px');
+  document.documentElement.style.setProperty('--dragon-glow', String(glow));
+  nameText.textContent = name || '';
+  // árnyék nagyobb mérethez: finom vizuális jel
+  dragonShadow.style.width = Math.max(40, Math.round(size*0.6)) + 'px';
+  dragonShadow.style.opacity = Math.min(0.9, 0.3 + glow*0.2);
+}
+
+function updateFromUI(){
+  const c = colorEl.value;
+  const s = parseInt(sizeRange.value,10);
+  const g = parseFloat(glowEl.value);
+  const n = nameInput.value || DEFAULT_NAME;
+  sizeVal.textContent = s;
+  applySettings(c,s,g,n);
+}
+
+// init defaults
+colorEl.value = DEFAULT_COLOR;
+sizeRange.value = DEFAULT_SIZE;
+sizeVal.textContent = DEFAULT_SIZE;
+glowEl.value = DEFAULT_GLOW;
+nameInput.value = DEFAULT_NAME;
+applySettings(DEFAULT_COLOR, DEFAULT_SIZE, DEFAULT_GLOW, DEFAULT_NAME);
+
+// events
+[colorEl, sizeRange, glowEl, nameInput].forEach(el => el.addEventListener('input', updateFromUI));
+
+resetBtn.addEventListener('click', ()=>{
+  colorEl.value = DEFAULT_COLOR;
+  sizeRange.value = DEFAULT_SIZE;
+  glowEl.value = DEFAULT_GLOW;
+  nameInput.value = DEFAULT_NAME;
+  updateFromUI();
+});
+
+// exportálja a custom CSS-t (letölthető)
+exportBtn.addEventListener('click', ()=>{
+  const c = colorEl.value;
+  const s = sizeRange.value;
+  const g = glowEl.value;
+  const css = `:root{ --dragon-color: ${c}; --dragon-size: ${s}px; --dragon-glow: ${g}; }`;
+  const blob = new Blob([css], {type:'text/css'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'custom_dragon.css';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// accessibility tweak: keyboard support
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'r') resetBtn.click();
+  if(e.key === 'e') exportBtn.click();
+});
+</script>
+</body>
+</html>
