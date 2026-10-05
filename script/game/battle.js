@@ -3,7 +3,8 @@
    ---------------------------------------------------------------------
    - sorrend: gyorsaság szerint (kis véletlennel), minden kör elején
    - energia: támadás és védekezés +1; a fej képessége 2, a tanult
-     technikák 1–3 energiába kerülnek
+     technikák 1–3 energiába kerülnek; a kombinált képesség (a testrészek
+     elemi összetételéből, rules.js: COMBOS) teli energiát (3) kér
    - állapotok: égés, méreg (kör eleji sebzés), fagyás, kábulat (kimarad),
      erősítés, pajzsfal, lassítás, rúnabélyeg, árnyéklépés — mind látszik
      is a sárkányon (lángok, buborékok, jég, csillagok, pajzsbuborék…)
@@ -21,6 +22,7 @@
 import {
   SKILLS, CAVES, TECHNIQUES, CHORUS, ULTIMATES, RELICS, techInfo, deriveStats, rollDamage, makeWild, makeSparring,
   withTotals, levelOf, MAX_ENERGY, SKILL_COST, shardsFor, xpFor, caveBonus, TAME_CHANCE, TAME_COST, pick,
+  COMBOS, COMBO_COST, ELEMENTS,
 } from './rules.js';
 import { dragonTextures, makeDragonView, caveBackdrop, arenaBackdrop, fieldBackdrop } from './art.js';
 import { esc } from './hud.js';
@@ -625,7 +627,7 @@ export class BattleScene extends Phaser.Scene {
     for (;;) {
       const techs = u.techs.map((k) => ({ key: k, ...TECHNIQUES[k] }));
       const act = await hud.chooseAction(u, {
-        canFlee: !this.bossWave, herbs: state.save.herbs, techs,
+        canFlee: !this.bossWave, herbs: state.save.herbs, techs, combo: u.stats.combo,
         chorus: this.chorusOn ? {
           ready: this.chorus >= CHORUS.max,
           rune: this.ultis.length === 1 ? ULTIMATES[this.ultis[0]].rune : 'ᛟ',
@@ -640,6 +642,13 @@ export class BattleScene extends Phaser.Scene {
         if (target === undefined) continue;                        // „Vissza"
         if (skill) await this.#skill(u, skill, target);
         else await this.#attack(u, target);
+        return;
+      }
+      if (act.type === 'combo') {
+        const info = COMBOS[u.stats.combo.key];
+        const target = info.target === 'enemy' ? await this.#pickTarget(u) : null;
+        if (target === undefined) continue;
+        await this.#combo(u, target);
         return;
       }
       if (act.type === 'tech') {
@@ -714,8 +723,17 @@ export class BattleScene extends Phaser.Scene {
     const target = Math.random() < 0.55 ? weakest : pick(allies);
     const tech = this.#aiTech(u);
     if (tech) return this.#technique(u, tech, techInfo(tech).target === 'enemy' ? target : null);
+    if (this.#aiCombo(u)) return this.#combo(u, COMBOS[u.stats.combo.key].target === 'enemy' ? target : null);
     if (u.energy >= SKILL_COST && Math.random() < (u.boss ? 0.8 : 0.6)) await this.#skill(u, u.stats.skill, u.stats.skill === 'thunder' ? null : target);
     else await this.#attack(u, target);
+  }
+
+  /** A vad is használja a kombinált képességét, ha teli az energiája (a pajzsosat csak bajban). */
+  #aiCombo(u) {
+    const c = u.stats.combo;
+    if (!c || u.energy < COMBO_COST || u.d.spar && u.stats.level < 3) return false;
+    if (COMBOS[c.key].target === 'party' && !this.alive(u.side).some((f) => f.hp < f.stats.maxHp * 0.6)) return false;
+    return Math.random() < (u.boss ? 0.6 : 0.5);
   }
 
   /** Mikor éri meg egy vadnak a technikája? Csak ha van értelme. */
@@ -856,6 +874,365 @@ export class BattleScene extends Phaser.Scene {
         await this.#strike(u, t, 1.1);
       }
     }
+  }
+
+  /* ================================================================== */
+  /* Kombinált képesség — a testrészek elemi összetételéből              */
+  /* ================================================================== */
+  async #combo(u, t) {
+    const { hud } = this.g;
+    const c = u.stats.combo;
+    const info = COMBOS[c.key];
+    u.energy -= COMBO_COST;
+    this.#updateBar(u);
+    const foes = this.alive(u.side === 'ally' ? 'enemy' : 'ally');
+    const friends = this.alive(u.side);
+    const icons = ELEMENTS[c.primary].icon + (c.secondary !== c.primary ? ELEMENTS[c.secondary].icon : '');
+    hud.battleLog(`<b>${esc(u.d.nev)}</b>: <span class="bl-tech" style="color:${hex(info.color)}">${icons} ${esc(info.name)}</span>${t ? ` → <b>${esc(t.d.nev)}</b>` : '!'}`
+      + (c.resonance > 2 ? ` <small>(rezonancia ${c.resonance}/4)</small>` : ''));
+
+    // Mozis bevezető: ráközelítés, a sárkány az elemei színében felizzik
+    hud.cinematic(true);
+    await this.#camTo(u.view.x, u.view.y, 1.12, 380);
+    this.#glow(u, info.color, 750);
+    await this.#skillName(u, info, true);
+    this.#camReset(380);
+
+    const targets = info.target === 'all' ? foes : info.target === 'enemy' && t ? [t] : [];
+    await this.#comboFx(u, info, t, targets, foes, friends);
+    const mult = info.mult * c.power;
+
+    if (info.target === 'party') {
+      for (const f of friends) {
+        const heal = Math.round(f.stats.maxHp * info.heal);
+        f.hp = Math.min(f.stats.maxHp, f.hp + heal);
+        f.status.ward = Math.max(f.status.ward, info.ward);
+        this.#float(f, `+${heal}`, '#7dffb0', 24);
+        this.#updateBar(f);
+      }
+      hud.battleLog(`${u.side === 'ally' ? 'A csapatod' : 'Az ellenfelek'} kőfal mögé húzódik: <b>+${Math.round(info.heal * 100)}%</b> életerő, <b>−30%</b> sebzés 2 körig.`);
+    } else if (info.chain) {
+      const r = await this.#strike(u, t, mult, { sure: true });
+      if (r) this.#comboEffects(u, t, info, r);
+      for (const f of foes) {
+        if (f === t || !f.alive) continue;
+        const r2 = await this.#strike(u, f, info.chain * c.power, { quick: true });
+        if (r2) this.#comboEffects(u, f, info, r2);
+      }
+    } else {
+      for (const f of targets) {
+        if (!f.alive) continue;
+        const r = await this.#strike(u, f, mult, {
+          sure: info.target === 'enemy', pierce: info.pierce, forceCrit: info.crit, heavy: info.heavy,
+          fire: !!info.burn, quick: targets.length > 1,
+        });
+        if (r && info.drain) await this.#orbs(f, u, info.color);
+        if (r) this.#comboEffects(u, f, info, r);
+      }
+    }
+    hud.cinematic(false);
+  }
+
+  /** A kombinált képesség mellékhatásai egy célponton (és a visszaszívás). */
+  #comboEffects(u, f, info, dealt) {
+    const notes = [];
+    if (f.alive) {
+      const st = f.status;
+      if (info.burn && !f.stats.traits.has('fireblood') && Math.random() < (info.burnChance ?? 1)) { st.burn = Math.max(st.burn, info.burn); notes.push('lángra kapott'); }
+      if (info.poison) { st.poison = Math.max(st.poison, info.poison); notes.push('megmérgeződött'); }
+      if (info.slow) { st.slow = Math.max(st.slow, info.slow); notes.push('lelassult'); }
+      if (info.mark) { st.mark = Math.max(st.mark, info.mark); notes.push('bélyeget kapott'); }
+      if (info.freeze && !f.stats.traits.has('frostheart') && Math.random() < info.freeze) {
+        st.freeze = 1; this.#iceBlock(f); notes.push('jégbe fagyott');
+      } else if (info.stun && Math.random() < info.stun) { st.stun = 1; notes.push('elkábult'); }
+      this.#updateBar(f);
+    }
+    if (notes.length) this.g.hud.battleLog(`<b>${esc(f.d.nev)}</b> ${notes.join(', ')}!`);
+    if (info.drain && u.alive) {
+      const heal = Math.round(dealt * info.drain);
+      u.hp = Math.min(u.stats.maxHp, u.hp + heal);
+      this.#float(u, `+${heal}`, '#ff9ab0', 24);
+      this.#updateBar(u);
+    }
+  }
+
+  /** A kombinált képességek látványa (a sebzés előtt). */
+  async #comboFx(u, info, t, targets, foes, friends) {
+    const { sfx } = this.g;
+    const col = info.color;
+    const cam = this.cameras.main;
+    switch (info.fx) {
+      case 'erupt':
+        sfx.fire(); sfx.quake();
+        cam.shake(700, 0.01);
+        await Promise.all(targets.map((f, i) => this.#pillar(f, col, i * 130)));
+        break;
+      case 'icefall':
+        sfx.frost();
+        await this.#iceDrop(t, col, !!info.heavy);
+        break;
+      case 'chain': {
+        sfx.thunder();
+        cam.flash(220, 210, 235, 255);
+        await this.#bolt(t, 0);
+        const rest = foes.filter((f) => f !== t);
+        if (rest.length) { sfx.thunder(); await this.#arcs(t, rest, [0x4fd6ff, 0xcfefff, 0xffffff]); }
+        break;
+      }
+      case 'void':
+        sfx.shadow(); sfx.drain();
+        await this.#vortex(t, col);
+        break;
+      case 'rockfall':
+        sfx.quake();
+        cam.shake(900, 0.014);
+        await Promise.all(targets.map((f, i) => this.#rocks(f, i * 140)));
+        break;
+      case 'cloud':
+        sfx.venom(); sfx.gale();
+        await this.#miasma(targets, col);
+        break;
+      case 'steam':
+        sfx.fire();
+        await this.#breath(u, t, [0xffffff, 0xffd08a, 0xcfefff, 0x9fe8ff]);
+        sfx.frost(); sfx.boom();
+        await this.#nova(t, 0xffffff);
+        break;
+      case 'firerain': {
+        const jobs = [];
+        targets.forEach((f, i) => {
+          const c = this.#center(f);
+          for (let k = 0; k < 2; k++) {
+            const x0 = c.x + (f.side === 'enemy' ? -1 : 1) * this.S * (1.2 + k * 0.6);
+            jobs.push(this.#fireball(x0, -60 - k * 40, c.x + (Math.random() - 0.5) * this.S * 0.3, c.y + (Math.random() - 0.5) * this.S * 0.2, i * 150 + k * 110, col));
+          }
+        });
+        await Promise.all(jobs);
+        break;
+      }
+      case 'hellfire':
+        sfx.fire(); sfx.shadow();
+        await this.#breath(u, t, [0xf0c8ff, 0xd06bff, 0x8a2be2, 0x3a0a5a]);
+        break;
+      case 'blizzard':
+        sfx.gale(); sfx.frost();
+        await this.#snowstorm(targets, col);
+        break;
+      case 'volley':
+        sfx.frost();
+        await this.#shards(u, t, [col, 0xffffff], 11);
+        break;
+      case 'darkbolt':
+        sfx.thunder(); sfx.shadow();
+        cam.flash(240, 150, 90, 230);
+        await this.#bolt(t, 0, [0x6a2bd9, 0xd9b8ff, 0xffffff]);
+        break;
+      case 'bolts':
+        sfx.thunder();
+        cam.flash(200, 255, 236, 180);
+        cam.shake(500, 0.012);
+        await Promise.all(targets.map((f, i) => this.#bolt(f, i * 120, [0xffa040, 0xfff3c4, 0xffffff])));
+        targets.forEach((f) => this.#dust(f, 10));
+        break;
+      case 'rain':
+        sfx.venom(); sfx.gale();
+        await this.#acidRain(targets, col);
+        break;
+      case 'crypt':
+        sfx.quake(); sfx.shield();
+        cam.shake(400, 0.008);
+        await Promise.all(friends.map((f, i) => this.#stoneWall(f, i * 110)));
+        break;
+      case 'wraith':
+        sfx.shadow(); sfx.venom();
+        this.#ghost(u, col, 0.6);
+        await this.#lunge(u, t, 0.6, 170, true);
+        this.#nova(t, col);
+        break;
+      case 'roots':
+        sfx.root();
+        await Promise.all(targets.map((f, i) => this.#roots(f, i * 110, [0x0f2a0b, 0x3d6a2a, 0x9dd86a])));
+        break;
+      default:
+        await this.#lunge(u, t);
+    }
+  }
+
+  /* --- A kombinált képességek látványelemei --------------------------- */
+  /** Lángoszlop / magma tör fel a célpont alól. */
+  async #pillar(f, color, delay) {
+    await this.#wait(delay);
+    const p = this.#feet(f), S = this.S;
+    const mark = this.add.image(p.x, p.y, 'fx-ring').setTint(color).setBlendMode('ADD').setScale(S / 300, S / 900).setDepth(f.view.depth - 1);
+    this.tweens.add({ targets: mark, scaleX: S / 110, scaleY: S / 330, alpha: { from: 1, to: 0 }, duration: 700, onComplete: () => mark.destroy() });
+    const jet = this.add.particles(p.x, p.y, 'fx-dot', {
+      x: { min: -S * 0.16, max: S * 0.16 }, speedY: { min: -S * 4.6, max: -S * 2.6 }, speedX: { min: -24, max: 24 },
+      lifespan: 520, scale: { start: 0.95, end: 0.15 }, alpha: { start: 1, end: 0 },
+      tint: [0xfff3a0, color, 0xff3d1f], blendMode: 'ADD', frequency: 10, quantity: 4,
+    }).setDepth(f.view.depth + 1);
+    this.#dust(f, 8);
+    this.tweens.add({ targets: f.view, y: f.home.y - S * 0.12, duration: 140, yoyo: true, ease: 'Quad.easeOut' });
+    await this.#wait(560);
+    jet.stop();
+    this.time.delayedCall(700, () => jet.destroy());
+  }
+
+  /** Jégtömb (vagy gleccserdarab) zuhan a célpontra, és szilánkokra törik. */
+  async #iceDrop(t, color, big) {
+    const c = this.#center(t), S = this.S;
+    const sx = (S * (big ? 0.55 : 0.36)) / 12, sy = (S * (big ? 1.05 : 0.8)) / 22;
+    const glow = this.add.image(c.x, -S, 'fx-shard').setTint(0xffffff).setBlendMode('ADD').setScale(sx * 1.25, sy * 1.15).setAlpha(0.5).setDepth(9199);
+    const ice = this.add.image(c.x, -S, 'fx-shard').setTint(color).setScale(sx, sy).setDepth(9200).setAlpha(0.92);
+    const shadow = this.add.image(this.#feet(t).x, this.#feet(t).y, 'fx-dot').setTint(0x000000).setScale(0.5, 0.15).setAlpha(0).setDepth(t.view.depth - 1);
+    this.tweens.add({ targets: shadow, scaleX: S / 22, scaleY: S / 80, alpha: 0.5, duration: 460, ease: 'Quad.easeIn' });
+    await this.#tween({ targets: [ice, glow], y: c.y - S * 0.1, duration: 460, ease: 'Quad.easeIn' });
+    this.g.sfx.boom();
+    this.cameras.main.shake(big ? 420 : 260, big ? 0.018 : 0.011);
+    ice.destroy(); glow.destroy();
+    this.tweens.add({ targets: shadow, alpha: 0, duration: 500, onComplete: () => shadow.destroy() });
+    this.#shatter(t);
+    this.#nova(t, color);
+  }
+
+  /** Táguló fénygyűrű és szikrák (robbanás, gőz). */
+  #nova(t, color) {
+    const c = this.#center(t);
+    for (let i = 0; i < 2; i++) {
+      const r = this.add.image(c.x, c.y, 'fx-ring').setTint(i ? color : 0xffffff).setBlendMode('ADD').setScale(0.15).setDepth(9100);
+      this.tweens.add({ targets: r, scale: this.S / 70 + i * 0.8, alpha: 0, duration: 520 + i * 180, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
+    }
+    const puff = this.add.particles(c.x, c.y, 'fx-smoke', {
+      speed: { min: 40, max: 160 }, lifespan: 900, scale: { start: 0.6, end: 1.8 }, alpha: { start: 0.55, end: 0 }, tint: [0xffffff, color], emitting: false,
+    }).setDepth(9090);
+    puff.explode(14);
+    this.time.delayedCall(1000, () => puff.destroy());
+    return this.#wait(380);
+  }
+
+  /** Villámívek egy célpontról a többire. */
+  async #arcs(from, tos, cols) {
+    const a = this.#center(from);
+    const g = this.add.graphics().setDepth(9200).setBlendMode('ADD');
+    for (const to of tos) {
+      const b = this.#center(to);
+      const pts = [[a.x, a.y]];
+      const n = 8;
+      for (let i = 1; i < n; i++) pts.push([a.x + (b.x - a.x) * (i / n) + (Math.random() - 0.5) * 30, a.y + (b.y - a.y) * (i / n) + (Math.random() - 0.5) * 40]);
+      pts.push([b.x, b.y]);
+      for (const [w, col, al] of [[9, cols[0], 0.35], [3.5, cols[1], 0.9], [1.4, cols[2], 1]]) {
+        g.lineStyle(w, col, al).beginPath().moveTo(...pts[0]);
+        for (const p of pts.slice(1)) g.lineTo(...p);
+        g.strokePath();
+      }
+      this.#impact(to, false);
+    }
+    await this.#tween({ targets: g, alpha: 0, duration: 320 });
+    g.destroy();
+  }
+
+  /** Sötét örvény: a fény és a por beszippantódik a célpontba. */
+  async #vortex(t, color) {
+    const c = this.#center(t), S = this.S;
+    const dark = this.add.image(c.x, c.y, 'fx-dot').setTint(0x12051f).setScale(0.2).setAlpha(0.85).setDepth(9080);
+    this.tweens.add({ targets: dark, scale: S / 18, duration: 520, yoyo: true, hold: 260, ease: 'Cubic.easeOut', onComplete: () => dark.destroy() });
+    const suck = this.add.particles(c.x, c.y, 'fx-dot', {
+      emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, S * 0.75), quantity: 36 },
+      moveToX: c.x, moveToY: c.y, lifespan: 520, scale: { start: 0.45, end: 0.05 },
+      tint: [color, 0xffffff, 0x3a0a5a], blendMode: 'ADD', frequency: 16, quantity: 3,
+    }).setDepth(9090);
+    const ring = this.add.image(c.x, c.y, 'fx-ring').setTint(color).setBlendMode('ADD').setScale(S / 70).setDepth(9091);
+    this.tweens.add({ targets: ring, scale: 0.1, angle: 270, duration: 900, ease: 'Cubic.easeIn', onComplete: () => ring.destroy() });
+    await this.#wait(900);
+    suck.stop();
+    this.time.delayedCall(600, () => suck.destroy());
+    this.#impact(t, true);
+  }
+
+  /** Sziklák zuhannak a célpontra. */
+  async #rocks(f, delay) {
+    await this.#wait(delay);
+    const c = this.#center(f), S = this.S;
+    const jobs = [0, 1, 2].map((k) => {
+      const key = `boulder${k % 2}`;
+      const r = this.add.image(c.x + (k - 1) * S * 0.25, -S * (0.6 + k * 0.4), key).setScale(S / (110 + k * 30)).setDepth(9200 + k).setAngle(Math.random() * 90);
+      return this.#tween({ targets: r, y: c.y + (k - 1) * S * 0.08, angle: r.angle + 200, duration: 430 + k * 90, ease: 'Quad.easeIn' }).then(() => {
+        this.#dust(f, 6);
+        this.cameras.main.shake(120, 0.008);
+        this.tweens.add({ targets: r, alpha: 0, scale: r.scale * 0.6, duration: 260, onComplete: () => r.destroy() });
+      });
+    });
+    await Promise.all(jobs);
+  }
+
+  /** Mérges / kénes felhő hömpölyög az ellenfelekre. */
+  async #miasma(targets, color) {
+    const S = this.S;
+    const clouds = targets.map((f) => {
+      const c = this.#center(f);
+      return this.add.particles(c.x, c.y, 'fx-smoke', {
+        x: { min: -S * 0.5, max: S * 0.5 }, y: { min: -S * 0.3, max: S * 0.35 }, speed: { min: 6, max: 30 },
+        lifespan: 1300, scale: { start: 0.8, end: 2.6 }, alpha: { start: 0.55, end: 0 }, tint: [color, 0x4a6b2a, 0xd8ff8a],
+        frequency: 40, quantity: 2,
+      }).setDepth(f.view.depth + 2);
+    });
+    targets.forEach((f) => this.#setTintFlash(f, color));
+    await this.#wait(900);
+    clouds.forEach((e) => { e.stop(); this.time.delayedCall(1400, () => e.destroy()); });
+  }
+
+  /** Rövid színes felvillanás (méreg, sav). */
+  #setTintFlash(f, color) {
+    this.#parts(f).forEach((i) => i.setTint(color));
+    this.time.delayedCall(260, () => { if (f.alive) this.#applyTint(f); });
+  }
+
+  /** Hóvihar: ferdén száguldó hópelyhek, örvény minden ellenfélen. */
+  async #snowstorm(targets, color) {
+    const { width: w, height: h } = this.scale;
+    const snow = this.add.particles(0, 0, 'fx-dot', {
+      x: { min: -w * 0.2, max: w }, y: -20, lifespan: 1400, speedX: { min: 260, max: 420 }, speedY: { min: 380, max: 560 },
+      scale: { min: 0.08, max: 0.22 }, alpha: { start: 0.95, end: 0.3 }, tint: [0xffffff, color], frequency: 8, quantity: 4,
+    }).setDepth(9600);
+    const veil = this.add.rectangle(w / 2, h / 2, w * 2, h * 2, color, 1).setAlpha(0).setBlendMode('ADD').setDepth(-2);
+    this.tweens.add({ targets: veil, alpha: 0.14, duration: 400, yoyo: true, hold: 600, onComplete: () => veil.destroy() });
+    await Promise.all(targets.map((f, i) => this.#whirl(f, color, i * 90)));
+    snow.stop();
+    this.time.delayedCall(1500, () => snow.destroy());
+  }
+
+  /** Savas eső a célpontok fölött, csobbanással a lábuknál. */
+  async #acidRain(targets, color) {
+    const S = this.S;
+    const xs = targets.map((f) => this.#center(f).x);
+    const x0 = Math.min(...xs) - S * 0.6, x1 = Math.max(...xs) + S * 0.6;
+    const drops = this.add.particles(0, -20, 'fx-spark', {
+      x: { min: x0, max: x1 }, lifespan: 700, speedY: { min: 900, max: 1200 }, speedX: -60, rotate: 95,
+      scale: { min: 0.6, max: 1 }, alpha: { start: 0.9, end: 0.6 }, tint: [color, 0xe8ffb0], blendMode: 'ADD', frequency: 6, quantity: 3,
+    }).setDepth(9600);
+    const splashes = targets.map((f) => {
+      const p = this.#feet(f);
+      return this.add.particles(p.x, p.y, 'fx-dot', {
+        x: { min: -S * 0.4, max: S * 0.4 }, speedY: { min: -120, max: -40 }, speedX: { min: -40, max: 40 }, gravityY: 400,
+        lifespan: 400, scale: { start: 0.18, end: 0 }, tint: color, blendMode: 'ADD', frequency: 30, quantity: 2,
+      }).setDepth(f.view.depth + 1);
+    });
+    await this.#wait(1000);
+    targets.forEach((f) => this.#setTintFlash(f, color));
+    drops.stop(); splashes.forEach((e) => e.stop());
+    this.time.delayedCall(900, () => { drops.destroy(); splashes.forEach((e) => e.destroy()); });
+  }
+
+  /** Kőfal: kőlapok emelkednek a sárkány elé, aztán pajzsbuborék. */
+  async #stoneWall(f, delay) {
+    await this.#wait(delay);
+    const p = this.#feet(f), S = this.S;
+    const dir = f.side === 'ally' ? 1 : -1;
+    const slabs = [-1, 0, 1].map((k) => this.add.image(p.x + dir * S * 0.42 + k * S * 0.05, p.y + k * S * 0.12, 'fx-shard')
+      .setTint(k ? 0x8a8fa6 : 0xa8a0c8).setOrigin(0.5, 1).setScale(S / 30, 0.01).setDepth(f.view.depth + 1 + k));
+    this.#dust(f, 10);
+    await this.#tween({ targets: slabs, scaleY: S / 34, duration: 280, ease: 'Back.easeOut' });
+    await this.#wardPop(f, 0);
+    this.time.delayedCall(500, () => this.tweens.add({ targets: slabs, alpha: 0, scaleY: 0.01, duration: 400, onComplete: () => slabs.forEach((s) => s.destroy()) }));
   }
 
   /* ================================================================== */
@@ -1653,12 +2030,12 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(700, () => p.destroy());
   }
 
-  async #shards(u, t) {
+  async #shards(u, t, tints = [0x9fe8ff, 0xffffff], n = 7) {
     const m = this.#mouth(u), c = this.#center(t);
     const ang = Math.atan2(c.y - m.y, c.x - m.x);
     const jobs = [];
-    for (let i = 0; i < 7; i++) {
-      const s = this.add.image(m.x, m.y, 'fx-shard').setTint(i % 2 ? 0xffffff : 0x9fe8ff).setBlendMode('ADD')
+    for (let i = 0; i < n; i++) {
+      const s = this.add.image(m.x, m.y, 'fx-shard').setTint(tints[i % 2]).setBlendMode('ADD')
         .setRotation(ang + Math.PI / 2).setScale(1.2).setDepth(9050);
       jobs.push(this.#tween({
         targets: s, x: c.x + (Math.random() - 0.5) * 40, y: c.y + (Math.random() - 0.5) * 40,
@@ -1702,7 +2079,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Villám felülről a célpontra — elágazásokkal. */
-  async #bolt(t, delay) {
+  async #bolt(t, delay, cols = [0x4fd6ff, 0xcfefff, 0xffffff]) {
     await this.#wait(delay);
     const c = this.#center(t);
     const g = this.add.graphics().setDepth(9200).setBlendMode('ADD');
@@ -1723,7 +2100,7 @@ export class BattleScene extends Phaser.Scene {
       for (const [px, py] of line.slice(1)) g.lineTo(px, py);
       g.strokePath();
     };
-    for (const [w, col, a] of [[10, 0x4fd6ff, 0.35], [4, 0xcfefff, 0.9], [1.6, 0xffffff, 1]]) {
+    for (const [w, col, a] of [[10, cols[0], 0.35], [4, cols[1], 0.9], [1.6, cols[2], 1]]) {
       stroke(pts, w, col, a);
       for (const b of branches) stroke(b, w * 0.5, col, a * 0.8);
     }
@@ -1920,7 +2297,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Gyökerek törnek fel a célpont alól, aztán visszahúzódnak. */
-  async #roots(t, delay) {
+  async #roots(t, delay, cols = [0x1a0b22, 0x4a2a5a, 0x9d6bff]) {
     await this.#wait(delay);
     const f = this.#feet(t);
     const g = this.add.graphics().setDepth(t.view.depth + 1);
@@ -1938,9 +2315,9 @@ export class BattleScene extends Phaser.Scene {
       g.clear();
       for (const c of curves) {
         const pts = c.getPoints(18).slice(0, Math.max(2, Math.round(18 * k.p)));
-        g.lineStyle(13, 0x1a0b22, 1).strokePoints(pts);
-        g.lineStyle(7, 0x4a2a5a, 1).strokePoints(pts);
-        g.lineStyle(2, 0x9d6bff, 0.8).strokePoints(pts);
+        g.lineStyle(13, cols[0], 1).strokePoints(pts);
+        g.lineStyle(7, cols[1], 1).strokePoints(pts);
+        g.lineStyle(2, cols[2], 0.8).strokePoints(pts);
       }
     };
     this.#dust(t, 8);

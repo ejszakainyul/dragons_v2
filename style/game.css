@@ -639,6 +639,14 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
 
 .gd-tech { color: #ffd9a8; }
 .gd-tech i { color: #ffb347; }
+/* Kombinált képesség: a testrészek elemi összetételéből */
+.gd-combo { color: color-mix(in srgb, var(--c) 70%, #fff); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.gd-combo i { font-family: inherit; color: inherit; }
+.gd-els { margin-left: auto; display: inline-flex; gap: 1px; font-size: .72rem; }
+.gd-els span { opacity: .35; filter: grayscale(.6); }
+.gd-els span.on { opacity: 1; filter: none; }
+.bp-buttons .bp-combo { box-shadow: inset 0 0 14px color-mix(in srgb, var(--c) 28%, transparent); }
+.bp-buttons .bp-combo .bp-els { font-size: .95em; letter-spacing: -1px; }
 .gd-ranks { display: flex; gap: 8px; margin-top: 3px; font-size: .74rem; color: #d9b45a; }
 
 /* =====================================================================

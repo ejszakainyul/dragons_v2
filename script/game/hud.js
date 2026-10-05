@@ -5,7 +5,10 @@
    akadálymentes (valódi gombok, fókusz, Esc), és ugyanazt a stílust
    kapja, mint az oldal többi része (kovácsolt gombok, rúnák).
    ===================================================================== */
-import { SKILLS, SLOTS, SLOT_NAMES, TECHNIQUES, TRAIN, CHORUS, ULTIMATES, RELICS, levelOf, xpForLevel, MAX_ENERGY, SKILL_COST } from './rules.js';
+import {
+  SKILLS, SLOTS, SLOT_NAMES, TECHNIQUES, TRAIN, CHORUS, ULTIMATES, RELICS, levelOf, xpForLevel, MAX_ENERGY, SKILL_COST,
+  COMBOS, COMBO_COST, ELEMENTS,
+} from './rules.js';
 import { B } from './world.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -110,7 +113,7 @@ export class Hud {
       const xpPct = Math.round(((d.xp - cur) / Math.max(1, next - cur)) * 100);
       const hpPct = Math.round((hp / s.maxHp) * 100);
       return `
-        <div class="hud-dragon${hp <= 0 ? ' is-down' : ''}" title="${esc(d.nev)} — ${esc(SKILLS[s.skill].name)}">
+        <div class="hud-dragon${hp <= 0 ? ' is-down' : ''}" title="${esc(d.nev)} — ${esc(SKILLS[s.skill].name)}${s.combo ? ` · ${esc(COMBOS[s.combo.key].name)}` : ''}">
           <img data-portrait="${d.id}" alt="">
           <div class="hud-dragon-body">
             <div class="hud-dragon-name"><b>${esc(d.nev)}</b><span>${lvl}. szint</span></div>
@@ -306,6 +309,7 @@ export class Hud {
             <span title="Gyorsaság">➶ ${s.spd}</span>
           </div>
           <div class="gd-skill" title="${esc(skill.desc)}"><i>${skill.rune}</i> ${esc(skill.name)}</div>
+          ${comboLine(s.combo)}
           ${techs.map((t) => `<div class="gd-skill gd-tech" title="${esc(t.desc)}"><i>${t.rune}</i> ${esc(t.name)}</div>`).join('')}
           ${ranks ? `<div class="gd-ranks" title="Edzésfokozatok">${ranks}</div>` : ''}
           ${traits ? `<div class="gd-traits">${traits}</div>` : ''}
@@ -385,7 +389,7 @@ export class Hud {
    * A játékos választ egy cselekvést a soron lévő sárkányának.
    * @returns {Promise<{type:string}>}
    */
-  chooseAction(unit, { canFlee, herbs, techs = [], chorus = null, fleeLabel = 'Menekülés' }) {
+  chooseAction(unit, { canFlee, herbs, techs = [], combo = null, chorus = null, fleeLabel = 'Menekülés' }) {
     const s = unit.stats;
     const skill = SKILLS[s.skill];
     const pips = Array.from({ length: MAX_ENERGY }, (_, i) => `<i class="${i < unit.energy ? 'on' : ''}"></i>`).join('');
@@ -396,6 +400,14 @@ export class Hud {
       { act: 'attack', cls: 'btn-primary', label: 'Támadás', title: 'Alaptámadás, +1 energia' },
       { act: 'skill', label: `<span class="bp-rune">${skill.rune}</span> ${esc(skill.name)} ${cost(SKILL_COST)}`,
         off: unit.energy < SKILL_COST, title: `${skill.desc} — ${SKILL_COST} energia` },
+      ...(combo ? [(() => {
+        const c = COMBOS[combo.key];
+        return {
+          act: 'combo', cls: 'bp-tech bp-combo', style: `--c:${hexCol(c.color)}`,
+          label: `<span class="bp-els">${comboIcons(combo)}</span> ${esc(c.name)} ${cost(COMBO_COST)}`,
+          off: unit.energy < COMBO_COST, title: `${c.desc}${resonanceNote(combo)} — teli energia (${COMBO_COST})`,
+        };
+      })()] : []),
       ...techs.map((t) => ({
         act: `tech:${t.key}`, cls: 'bp-tech', style: `--c:#${t.color.toString(16).padStart(6, '0')}`,
         label: `<span class="bp-rune">${t.rune}</span> ${esc(t.name)} ${cost(t.cost)}`,
@@ -446,6 +458,24 @@ export class Hud {
       scope.querySelectorAll('.bp-actions [data-act], .bp-chorus [data-act]').forEach((b) => b.addEventListener('click', () => done(b.dataset.act)));
     });
   }
+}
+
+/* --- Kombinált képesség (elemi összetétel) a kártyákon és a harci panelen --- */
+const hexCol = (n) => `#${n.toString(16).padStart(6, '0')}`;
+const comboIcons = (c) => ELEMENTS[c.primary].icon + (c.secondary !== c.primary ? ELEMENTS[c.secondary].icon : '');
+const resonanceNote = (c) => (c.resonance > 2 ? ` · rezonancia ${c.resonance}/4: +${Math.round((c.power - 1) * 100)}%` : '');
+
+/** A kártya sora: a kombinált képesség, alatta a testrészek elemei. */
+export function comboLine(c) {
+  if (!c) return '';
+  const info = COMBOS[c.key];
+  const parts = SLOTS.filter((s) => c.parts[s]).map((s) => {
+    const e = ELEMENTS[c.parts[s]];
+    const on = c.parts[s] === c.primary || c.parts[s] === c.secondary;
+    return `<span class="${on ? 'on' : ''}" title="${esc(SLOT_NAMES[s])}: ${esc(e.name)}">${e.icon}</span>`;
+  }).join('');
+  return `<div class="gd-skill gd-combo" style="--c:${hexCol(info.color)}" title="${esc(info.desc)}${esc(resonanceNote(c))} — teli energia">
+      <i>${comboIcons(c)}</i> ${esc(info.name)}<span class="gd-els" aria-label="Elemi összetétel">${parts}</span></div>`;
 }
 
 export { SLOTS, SLOT_NAMES };

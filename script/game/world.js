@@ -54,7 +54,7 @@ export const POIS = [
 ];
 
 /* --- Zaj ------------------------------------------------------------ */
-function makeNoise(seed) {
+export function makeNoise(seed) {
   const rng = mulberry32(seed);
   const perm = new Uint16Array(512);
   const vals = new Float32Array(256);
@@ -71,7 +71,7 @@ function makeNoise(seed) {
     return (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
   };
 }
-function fbm(n, x, y, oct = 4) {
+export function fbm(n, x, y, oct = 4) {
   let v = 0, a = 1, f = 1, s = 0;
   for (let o = 0; o < oct; o++) { v += n(x * f + o * 17.3, y * f - o * 9.1) * a; s += a; a *= 0.5; f *= 2.03; }
   return v / s;
@@ -91,6 +91,7 @@ export function generateWorld(seed = 20260929) {
   const biome = new Uint8Array(W * H);          // B.*
   const snowy = new Uint8Array(W * H);          // havas vidék (észak)
   const ashy  = new Uint8Array(W * H);          // hamuverem
+  const elev  = new Float32Array(W * H);        // a nyers domborzat (a 3D-s árnyékoláshoz)
 
   /* --- 1–2. Domborzat és vidékek -------------------------------------- */
   for (let y = 0; y < H; y++) {
@@ -101,6 +102,7 @@ export function generateWorld(seed = 20260929) {
             + smooth(0.8, 1.0, edge) * 0.8
             + smooth(0.2, 0, ny) * 0.28;
       const i = at(x, y);
+      elev[i] = e;
       biome[i] = e > 0.66 ? B.MOUNTAIN : B.GRASS;
 
       if (y < 19 + fbm(n2, x / 6, 3) * 6) snowy[i] = 1;
@@ -365,11 +367,63 @@ export function generateWorld(seed = 20260929) {
     if (n >= 3) junctions.push({ x, y });
   }
 
+  /* --- 9. Magasság: a domborzat-árnyékoláshoz és a vetett árnyékokhoz ---
+     Csak a megjelenítés használja; a hegyek a peremüktől befelé
+     emelkednek, a víz a parttól távolodva mélyül. */
+  const height = buildHeight(W, H, biome, elev, snowy);
+
   return {
     w: W, h: H, tile: TILE, seed,
-    ground, biome, blocked, snowy, ashy, reach, occupied,
+    ground, biome, blocked, snowy, ashy, reach, occupied, height,
     trees, boulders, herbs, decor, junctions, treeAt,
     pois: POIS.map((p) => ({ ...p })),
     start: { x: home.x, y: home.y + 1 },
   };
+}
+
+/** Csempénkénti magasság (kb. −0,4 … 2,5): BFS-távolság a hegy pereméttől / a parttól. */
+function buildHeight(W, H, biome, elev, snowy) {
+  const N = W * H;
+  const inMt = new Int16Array(N).fill(-1);
+  const inWt = new Int16Array(N).fill(-1);
+  const isMt = (b) => b === B.MOUNTAIN;
+  const isWt = (b) => b === B.WATER || b === B.BRIDGE || b === B.ICE;
+  const bfs = (dist, member) => {
+    const q = [];
+    for (let i = 0; i < N; i++) if (!member(biome[i])) { dist[i] = 0; q.push(i); }
+    for (let k = 0; k < q.length; k++) {
+      const i = q[k], x = i % W, y = (i / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const j = ny * W + nx;
+        if (dist[j] >= 0) continue;
+        dist[j] = dist[i] + 1;
+        q.push(j);
+      }
+    }
+  };
+  bfs(inMt, isMt);
+  bfs(inWt, isWt);
+  const raw = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const b = biome[i];
+    if (isMt(b)) raw[i] = 0.55 + Math.min(inMt[i], 6) * 0.3 + (elev[i] - 0.6) * 1.1;
+    else if (b === B.ICE) raw[i] = 0.02;
+    else if (isWt(b)) raw[i] = -0.08 - Math.min(inWt[i], 5) * 0.07;
+    else raw[i] = 0.12 + (elev[i] - 0.4) * 0.35 + (snowy[i] ? 0.06 : 0);
+  }
+  // Egy simítás: a lejtők ne lépcsőzzenek csempénként
+  const out = new Float32Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let s = 0, w = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const k = dx || dy ? (dx && dy ? 0.5 : 1) : 2;
+      s += raw[ny * W + nx] * k; w += k;
+    }
+    out[y * W + x] = s / w;
+  }
+  return out;
 }

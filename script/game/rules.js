@@ -29,6 +29,127 @@ export const SKILLS = {
   tail:    { name: 'Farokcsapás',  rune: 'ᚱ', color: 0xc9d3ea, desc: '110% sebzés (fej nélkül)' },
 };
 
+/* --- Elemi összetétel és kombinált képesség ---------------------------
+   Minden testrésznek eleme van (a nevéből: Lávapofa → tűz, Jégkarom →
+   jég…). A fej eleme az ELSŐDLEGES, a test + láb + szárny közül a
+   leggyakoribb a MÁSODLAGOS; a kettő párosa adja a sárkány kombinált
+   képességét (6 tiszta + 15 vegyes = 21 féle). Minél több testrész
+   „rezonál" a párossal, annál erősebb (rezonancia: 2–4 rész). */
+export const ELEMENTS = {
+  fire:   { name: 'Tűz',   icon: '🔥', color: 0xff8a3d },
+  frost:  { name: 'Jég',   icon: '❄', color: 0x7ce7ff },
+  storm:  { name: 'Vihar', icon: '⚡', color: 0x9fd8ff },
+  shadow: { name: 'Árny',  icon: '🌑', color: 0xb18cff },
+  earth:  { name: 'Kő',    icon: '⛰', color: 0xd9a066 },
+  venom:  { name: 'Méreg', icon: '☠', color: 0x7dff6a },
+};
+
+/** Testrész-azonosító → elem (a tools/parts_table.php nevei alapján). */
+const PART_ELEMENT = {
+  fej: {
+    1: 'earth', 2: 'fire', 3: 'fire', 4: 'frost', 5: 'fire', 6: 'storm', 7: 'earth', 8: 'shadow', 9: 'storm',
+    10: 'storm', 11: 'storm', 12: 'venom', 13: 'frost', 14: 'fire', 15: 'earth', 16: 'shadow', 17: 'earth', 18: 'fire',
+  },
+  test: {
+    1: 'storm', 2: 'earth', 3: 'earth', 4: 'frost', 5: 'fire', 6: 'storm', 7: 'earth', 8: 'shadow', 9: 'frost',
+    10: 'venom', 11: 'earth', 12: 'shadow', 13: 'storm', 14: 'earth', 15: 'venom', 16: 'frost', 17: 'shadow', 18: 'fire',
+  },
+  lab: {
+    1: 'earth', 2: 'fire', 3: 'earth', 4: 'frost', 5: 'fire', 6: 'storm', 7: 'earth', 8: 'shadow', 9: 'storm',
+    10: 'earth', 11: 'storm', 12: 'venom', 13: 'shadow', 14: 'earth', 15: 'venom', 16: 'frost', 17: 'earth', 18: 'storm',
+  },
+  szarny: {
+    1: 'storm', 2: 'fire', 3: 'storm', 4: 'frost', 5: 'fire', 6: 'storm', 7: 'earth', 8: 'shadow', 9: 'frost',
+    10: 'storm', 11: 'venom', 12: 'frost', 13: 'storm', 14: 'frost', 15: 'shadow', 16: 'earth', 17: 'venom', 18: 'shadow',
+  },
+};
+/** Ismeretlen (később felvett) részeknél a formából. */
+const SHAPE_ELEMENT = {
+  snout: 'fire', blunt: 'earth', beak: 'storm', crest: 'storm', skull: 'shadow', viper: 'venom', horned: 'earth', crystal: 'frost',
+  standard: 'fire', stocky: 'earth', arched: 'frost', serpent: 'venom', long: 'earth', skeletal: 'shadow',
+  digit: 'fire', pillar: 'earth', lanky: 'storm', hoof: 'earth', grasp: 'shadow',
+  bat: 'shadow', feather: 'storm', insect: 'venom', fin: 'frost', double: 'storm', torn: 'shadow',
+};
+
+/**
+ * A kombinált képességek. target: 'enemy' · 'all' · 'party'.
+ * fx: a látvány fajtája (battle.js). A hatások: burn/poison/slow/mark (kör),
+ * freeze/stun (esély), drain (a sebzés ennyi része gyógyít), chain (a
+ * többi ellenfél ennyi szorzót kap), heal (a csapat %-a), ward (kör).
+ */
+export const COMBOS = {
+  'fire+fire':     { name: 'Pokolkatlan',    rune: 'ᚲ', color: 0xff6a1f, target: 'all',   fx: 'erupt',    mult: 0.9,  burn: 3,
+                     desc: 'Lángoszlopok törnek fel minden ellenfél alatt: 90% sebzés, 3 körig égnek' },
+  'frost+frost':   { name: 'Örök fagy',      rune: 'ᛁ', color: 0x9fe8ff, target: 'enemy', fx: 'icefall',  mult: 1.6,  freeze: 0.65,
+                     desc: 'Jégtömb zuhan a célpontra: 160% sebzés, 65% eséllyel megfagyaszt' },
+  'storm+storm':   { name: 'Láncvillám',     rune: 'ᛊ', color: 0xcfefff, target: 'enemy', fx: 'chain',    mult: 1.3,  chain: 0.7,
+                     desc: 'A villám a célpontról mindenkire átugrik: 130% + a többieknek 70% sebzés' },
+  'shadow+shadow': { name: 'Éjnyelő',        rune: 'ᛇ', color: 0x8a5cff, target: 'enemy', fx: 'void',     mult: 1.5,  drain: 0.5, mark: 2,
+                     desc: 'Örvénylő sötétség: 150% sebzés, a fele visszagyógyul, 2 körig bélyeg' },
+  'earth+earth':   { name: 'Hegyomlás',      rune: 'ᛞ', color: 0xd9a066, target: 'all',   fx: 'rockfall', mult: 1.0,  stun: 0.3, heavy: true,
+                     desc: 'Sziklák zúdulnak minden ellenfélre: 100% sebzés, 30% eséllyel kábít' },
+  'venom+venom':   { name: 'Dögvész',        rune: 'ᛃ', color: 0x7dff6a, target: 'all',   fx: 'cloud',    mult: 0.6,  poison: 4,
+                     desc: 'Mérgező felhő: 60% sebzés mindenkire, 4 körig mérgez' },
+
+  'fire+frost':    { name: 'Gőzrobbanás',    rune: 'ᚺ', color: 0xe8f6ff, target: 'enemy', fx: 'steam',    mult: 1.7,  pierce: true,
+                     desc: 'Tűz és jég egymásnak csapódik: 170% sebzés, átüti a páncélt' },
+  'fire+storm':    { name: 'Tűzvihar',       rune: 'ᚲ', color: 0xffb347, target: 'all',   fx: 'firerain', mult: 0.8,  burn: 2,
+                     desc: 'Lángeső minden ellenfélre: 80% sebzés, 2 körig égnek' },
+  'fire+shadow':   { name: 'Pokoltűz',       rune: 'ᚦ', color: 0xc04dff, target: 'enemy', fx: 'hellfire', mult: 1.5,  burn: 3, mark: 2,
+                     desc: 'Bíbor lángcsóva: 150% sebzés, 3 körig ég, 2 körig bélyeg' },
+  'earth+fire':    { name: 'Magmafeltörés',  rune: 'ᛞ', color: 0xff7a3d, target: 'all',   fx: 'erupt',    mult: 0.95, burn: 2, burnChance: 0.5,
+                     desc: 'Izzó magma tör fel: 95% sebzés mindenkire, 50% eséllyel lángra kapnak' },
+  'fire+venom':    { name: 'Kénköd',         rune: 'ᛃ', color: 0xe8d36b, target: 'all',   fx: 'cloud',    mult: 0.55, burn: 2, poison: 2,
+                     desc: 'Égő kénfelhő: 55% sebzés mindenkire, égés és méreg 2 körig' },
+  'frost+storm':   { name: 'Hóvihar',        rune: 'ᚹ', color: 0xc9f0ff, target: 'all',   fx: 'blizzard', mult: 0.7,  slow: 2, freeze: 0.25,
+                     desc: 'Fagyos szélvihar: 70% sebzés mindenkire, lassít, 25% eséllyel fagyaszt' },
+  'frost+shadow':  { name: 'Sírfagy',        rune: 'ᛁ', color: 0x8fa8ff, target: 'enemy', fx: 'volley',   mult: 1.4,  freeze: 0.5, drain: 0.3,
+                     desc: 'Holdfényes jégszilánkok: 140% sebzés, 50% fagyás, 30% visszagyógyul' },
+  'earth+frost':   { name: 'Gleccsertörés',  rune: 'ᛁ', color: 0xb9e6ff, target: 'enemy', fx: 'icefall',  mult: 1.9,  stun: 0.35, heavy: true,
+                     desc: 'Egy gleccser darabja zuhan le: 190% sebzés, 35% eséllyel kábít' },
+  'frost+venom':   { name: 'Dérméreg',       rune: 'ᛃ', color: 0x9dffd8, target: 'enemy', fx: 'volley',   mult: 1.2,  poison: 3, slow: 2,
+                     desc: 'Mérgezett jégtűk: 120% sebzés, 3 körig méreg, 2 körig lassít' },
+  'shadow+storm':  { name: 'Fekete villám',  rune: 'ᛊ', color: 0xb18cff, target: 'enemy', fx: 'darkbolt', mult: 1.6,  crit: true,
+                     desc: 'Bíbor villám: 160% sebzés, biztos kritikus találat' },
+  'earth+storm':   { name: 'Mennykőcsapás',  rune: 'ᛊ', color: 0xffe08a, target: 'all',   fx: 'bolts',    mult: 0.85, stun: 0.25,
+                     desc: 'Villámok csapnak a földbe: 85% sebzés mindenkire, 25% eséllyel kábít' },
+  'storm+venom':   { name: 'Savas eső',      rune: 'ᛚ', color: 0xb6ff5a, target: 'all',   fx: 'rain',     mult: 0.6,  poison: 3,
+                     desc: 'Maró eső: 60% sebzés mindenkire, 3 körig mérgez' },
+  'earth+shadow':  { name: 'Kőkripta',       rune: 'ᛒ', color: 0xa8a0c8, target: 'party', fx: 'crypt',    mult: 0,    heal: 0.15, ward: 2,
+                     desc: 'Kőfal emelkedik a csapat köré: 15% gyógyulás, 2 körig pajzsfal' },
+  'shadow+venom':  { name: 'Lidércharapás',  rune: 'ᛗ', color: 0xd06bff, target: 'enemy', fx: 'wraith',   mult: 1.3,  poison: 4, drain: 0.4,
+                     desc: 'Lidércfog: 130% sebzés, 4 körig méreg, 40% visszagyógyul' },
+  'earth+venom':   { name: 'Tüskeinda',      rune: 'ᚾ', color: 0x9dd86a, target: 'all',   fx: 'roots',    mult: 0.7,  slow: 2, poison: 2,
+                     desc: 'Tüskés indák: 70% sebzés mindenkire, lassít és mérgez 2 körig' },
+};
+export const COMBO_COST = 3;
+export const comboKey = (a, b) => [a, b].sort().join('+');
+
+/**
+ * A sárkány elemi összetétele.
+ * @returns {{parts:Object<string,string>, primary:string, secondary:string,
+ *            key:string, resonance:number, power:number}|null}
+ */
+export function composition(d, catalog) {
+  const parts = {};
+  for (const s of SLOTS) {
+    if (!d[s]) continue;
+    const id = Number(d[s]);
+    parts[s] = PART_ELEMENT[s][id] || SHAPE_ELEMENT[catalog?.[s]?.[id]?.shape] || null;
+  }
+  const rest = ['test', 'szarny', 'lab'].map((s) => parts[s]).filter(Boolean);
+  const primary = parts.fej || rest[0];
+  if (!primary) return null;
+  // A másodlagos: a fejen kívüli részek leggyakoribb eleme (döntetlennél test > szárny > láb)
+  const count = {};
+  for (const e of rest) count[e] = (count[e] || 0) + 1;
+  let secondary = primary, best = 0;
+  for (const e of rest) if (count[e] > best) { best = count[e]; secondary = e; }
+  const key = comboKey(primary, secondary);
+  const resonance = Object.values(parts).filter((e) => e === primary || e === secondary).length;
+  return { parts, primary, secondary, key, resonance, power: 1 + 0.08 * Math.max(0, resonance - 2) };
+}
+
 /* --- Tanult technikák (a Gyakorlótéren, Ragnhildtól) -----------------
    target: 'enemy' egy ellenfél · 'all' minden ellenfél · 'ally' a
    legsebesültebb társ · 'party' az egész csapat · 'self' önmaga */
@@ -213,6 +334,7 @@ export function deriveStats(d, catalog, extra = {}) {
     eva:   Math.min(0.3, eva),
     crit:  Math.min(0.5, crit),
     skill: HEAD_SKILL[shape('fej')] || 'tail',
+    combo: composition(d, catalog),
     level,
     traits,
   };

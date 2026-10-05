@@ -24,25 +24,50 @@ function canvas(w, h) {
   return c;
 }
 
+/*
+ * Varratmentes csempék: amíg CELL be van állítva (a tileset rajzolásakor),
+ * minden apró elem a csempe szélén „körbefordul" (a túloldalon is
+ * megjelenik), és nem lóg át a szomszéd csempébe. Így a csempék
+ * határán nincs elvágott pötty, szaggatott csík.
+ */
+let CELL = null;
+function wrapDraw(ctx, fn) {
+  if (!CELL) { fn(); return; }
+  const { x, y, s } = CELL;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, s, s); ctx.clip();
+  for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) {
+    ctx.save(); ctx.translate(ox, oy); fn(); ctx.restore();
+  }
+  ctx.restore();
+}
+
 function speckle(ctx, x, y, w, h, colors, count, rng, rMin = 0.8, rMax = 1.8) {
   for (let i = 0; i < count; i++) {
-    ctx.fillStyle = colors[(rng() * colors.length) | 0];
-    ctx.beginPath();
-    ctx.arc(x + rng() * w, y + rng() * h, rMin + rng() * (rMax - rMin), 0, Math.PI * 2);
-    ctx.fill();
+    const col = colors[(rng() * colors.length) | 0];
+    const px = x + rng() * w, py = y + rng() * h, r = rMin + rng() * (rMax - rMin);
+    wrapDraw(ctx, () => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 }
 
 function blades(ctx, x, y, w, h, color, count, rng, len = 5) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.2;
-  ctx.lineCap = 'round';
   for (let i = 0; i < count; i++) {
     const bx = x + rng() * w, by = y + rng() * h;
-    ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(bx + (rng() - 0.5) * 3, by - len * (0.6 + rng() * 0.6));
-    ctx.stroke();
+    const tx = bx + (rng() - 0.5) * 3, ty = by - len * (0.6 + rng() * 0.6);
+    wrapDraw(ctx, () => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+    });
   }
 }
 
@@ -74,7 +99,12 @@ export function buildTileset(scene) {
   const rng = mulberry32(777);
 
   const at = (t) => [(t % COLS) * S, Math.floor(t / COLS) * S];
-  const fill = (t, color) => { const [x, y] = at(t); ctx.fillStyle = color; ctx.fillRect(x, y, S, S); return [x, y]; };
+  const fill = (t, color) => {
+    const [x, y] = at(t);
+    CELL = { x, y, s: S };
+    ctx.fillStyle = color; ctx.fillRect(x, y, S, S);
+    return [x, y];
+  };
 
   /* --- Fű --- */
   const grass = (t, base, extra) => {
@@ -98,9 +128,10 @@ export function buildTileset(scene) {
 
   /* --- Erdei avar --- */
   {
-    const [x, y] = fill(T.FOREST, '#2e4e37');
-    speckle(ctx, x, y, S, S, ['#26412e', '#3b5f42', '#5a4a33'], 30, rng, 1, 2.2);
-    blades(ctx, x, y + 4, S, S - 4, '#223a29', 10, rng, 4);
+    // A fű árnyalatához közel: a fák alatt ne látszódjon csempeszél
+    const [x, y] = fill(T.FOREST, '#385f42');
+    speckle(ctx, x, y, S, S, ['#2f5238', '#44694a', '#5a4a33'], 30, rng, 1, 2.2);
+    blades(ctx, x, y + 4, S, S - 4, '#2a4a31', 10, rng, 4);
   }
 
   /* --- Ösvény --- */
@@ -120,8 +151,11 @@ export function buildTileset(scene) {
   const snow = (t, base) => {
     const [x, y] = fill(t, base);
     speckle(ctx, x, y, S, S, ['#c9d6ea', '#ffffff', '#b7c6de'], 18, rng, 1.5, 4);
-    ctx.fillStyle = 'rgba(150,170,210,.25)';
-    ctx.beginPath(); ctx.ellipse(x + rng() * S, y + rng() * S, 10, 4, 0, 0, 7); ctx.fill();
+    const ex = x + rng() * S, ey = y + rng() * S;
+    wrapDraw(ctx, () => {
+      ctx.fillStyle = 'rgba(150,170,210,.25)';
+      ctx.beginPath(); ctx.ellipse(ex, ey, 10, 4, 0, 0, 7); ctx.fill();
+    });
   };
   snow(T.SNOW, '#dbe5f3');
   snow(T.SNOW2, '#d2ddee');
@@ -151,10 +185,12 @@ export function buildTileset(scene) {
   const rock = (t, top, hi, lo, cap) => {
     const [x, y] = fill(t, top);
     speckle(ctx, x, y, S, S, [hi, lo], 20, rng, 1.5, 4);
-    ctx.strokeStyle = lo; ctx.lineWidth = 1.5;
     for (let i = 0; i < 3; i++) {
-      const sx = x + rng() * S, sy = y + rng() * S;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 6 + rng() * 8, sy + 3 + rng() * 5); ctx.stroke();
+      const sx = x + rng() * S, sy = y + rng() * S, ex = sx + 6 + rng() * 8, ey = sy + 3 + rng() * 5;
+      wrapDraw(ctx, () => {
+        ctx.strokeStyle = lo; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      });
     }
     if (cap) { ctx.fillStyle = cap; speckle(ctx, x, y, S, S, [cap], 10, rng, 2, 5); }
   };
@@ -185,22 +221,15 @@ export function buildTileset(scene) {
   for (let mask = 0; mask < 16; mask++) {
     const t = T.WATER_EDGE + mask;
     const [x, y] = at(t);
-    ctx.fillStyle = vgrad(ctx, y, y + S, [[0, '#23537f'], [1, '#1b456d']]);
+    ctx.fillStyle = '#1f4c76';
     ctx.fillRect(x, y, S, S);
-    ctx.strokeStyle = 'rgba(140,200,255,.28)'; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(140,200,255,.22)'; ctx.lineWidth = 1.4;
     for (let i = 0; i < 3; i++) {
       const wy = y + 10 + i * 13 + rng() * 5, wx = x + rng() * 20;
       ctx.beginPath(); ctx.moveTo(wx, wy); ctx.quadraticCurveTo(wx + 6, wy - 3, wx + 12, wy); ctx.stroke();
     }
-    // Partél: homoksáv + habcsík azon az oldalon, ahol szárazföld van
-    const edge = (x0, y0, w, h, fx, fy, fw, fh) => {
-      ctx.fillStyle = '#c7b385'; ctx.fillRect(x0, y0, w, h);
-      ctx.fillStyle = 'rgba(230,245,255,.75)'; ctx.fillRect(fx, fy, fw, fh);
-    };
-    if (mask & 1) edge(x, y, S, 5, x, y + 5, S, 2);
-    if (mask & 2) edge(x + S - 5, y, 5, S, x + S - 7, y, 2, S);
-    if (mask & 4) edge(x, y + S - 5, S, 5, x, y + S - 7, S, 2);
-    if (mask & 8) edge(x, y, 5, S, x + 5, y, 2, S);
+    // A partél (homok, hab) nem a csempébe rajzolódik: a domborzati réteg
+    // (terrain.js) hullámos, elmosott partvonalat fest helyette.
   }
   // A tiszta víz (5) ugyanaz, mint a 0-s maszk
   { const [x, y] = at(T.WATER); const [sx, sy] = at(T.WATER_EDGE); ctx.drawImage(c, sx, sy, S, S, x, y, S, S); }
@@ -232,6 +261,8 @@ export function buildTileset(scene) {
     ctx.fillStyle = 'rgba(7,10,20,.6)'; ctx.fillRect(x, y, S, S);
     speckle(ctx, x, y, S, S, ['rgba(7,10,20,.5)'], 14, rng, 3, 9);
   }
+
+  CELL = null;
 
   // Áttétel peremmel: a csempe szélső képpontsorai kifelé ismétlődnek
   const M = TILE_MARGIN, P = TILE_SPACING;
