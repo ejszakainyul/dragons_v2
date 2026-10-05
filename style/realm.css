@@ -1,0 +1,288 @@
+/* =====================================================================
+   Háttérvilág — éjszakai fjord, sarkfény, rúnakövek, lebegő tárgyak
+   ---------------------------------------------------------------------
+   TELJESÍTMÉNY-SZABÁLYOK (gyengébb gépekre tervezve):
+
+   1. Minden animáció CSAK transform, translate, rotate vagy opacity.
+      Ezeket a böngésző a kompozitoron végzi, újrafestés nélkül.
+      (A korábbi csillagmező background-position-t animált: az a teljes
+      képernyőt minden képkockán újrafestette.)
+   2. A nagy képek statikus SVG-k, belül semmi nem mozog.
+   3. Nincs backdrop-filter és nincs animált filter.
+   4. html.realm-lite: kevesebb réteg (köd, sarkfény-mozgás, lebegő
+      tárgyak fele) és nincs parallaxis. A header.php kapcsolja be,
+      ha kevés a mag/memória, vagy mentett adatforgalmat kér a böngésző.
+   ===================================================================== */
+
+.realm {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: #03050c;
+  contain: strict;
+}
+
+/* A 3D-s kérdőív saját vásznat használ — ott a háttér csak pazarlás */
+body.journey-active .realm { display: none; }
+
+.realm-sky {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: 50% 30%;
+}
+
+/* --- Sarkfény: lassan hullámzik ------------------------------------- */
+.realm-aurora {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: -4vh;
+  height: 62vh;
+  background-size: 100% 100%;
+  opacity: .9;
+  transform-origin: 50% 0;
+  animation: realmAurora 38s ease-in-out infinite alternate;
+}
+@keyframes realmAurora {
+  0%   { transform: translate3d(-2.5%, 0, 0) scaleY(1);    opacity: .75; }
+  50%  { transform: translate3d(1.5%, 1vh, 0) scaleY(1.1); opacity: 1;   }
+  100% { transform: translate3d(3%, -.5vh, 0) scaleY(.95); opacity: .82; }
+}
+
+/* --- Pislákoló csillagok (kis elemek, nem egy képernyőnyi réteg) ----- */
+.realm-twinkle i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px 1px rgba(190, 220, 255, .9),
+              0 0 0 0 transparent;
+  scale: var(--s);
+  animation: realmTwinkle var(--d) ease-in-out var(--delay) infinite;
+}
+/* kis kereszt alakú csillanás */
+.realm-twinkle i::before,
+.realm-twinkle i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 1px;
+  translate: -50% -50%;
+  background: linear-gradient(90deg, transparent, rgba(220, 235, 255, .8), transparent);
+}
+.realm-twinkle i::after { rotate: 90deg; }
+
+@keyframes realmTwinkle {
+  0%, 100% { opacity: .15; transform: scale(.6); }
+  50%      { opacity: 1;   transform: scale(1);  }
+}
+
+/* --- Hold rúnagyűrűvel ---------------------------------------------- */
+.realm-moon {
+  position: absolute;
+  top: 9vh;
+  right: 9vw;
+  width: clamp(130px, 13vw, 210px);
+  aspect-ratio: 1;
+}
+.realm-moon-disc {
+  position: absolute;
+  inset: 29%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 62% 58%, rgba(120, 132, 180, .35) 0 12%, transparent 13%),
+    radial-gradient(circle at 36% 40%, rgba(120, 132, 180, .28) 0 9%, transparent 10%),
+    radial-gradient(circle at 48% 72%, rgba(120, 132, 180, .22) 0 6%, transparent 7%),
+    radial-gradient(circle at 38% 34%, #fffbea, #dfe3f5 48%, #a6b1d8 78%);
+  box-shadow: 0 0 40px 12px rgba(190, 210, 255, .28), 0 0 120px 40px rgba(120, 180, 255, .12);
+}
+.realm-moon-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .8;
+  animation: realmSpin 160s linear infinite;
+}
+@keyframes realmSpin { to { transform: rotate(1turn); } }
+
+/* --- Tájrétegek ----------------------------------------------------- */
+.realm-land {
+  position: absolute;
+  inset: 0;
+}
+
+.realm-layer {
+  position: absolute;
+  /* Túlnyúlás: parallaxis közben se látszódjon a réteg széle */
+  inset: -3vh -3vw;
+  container-type: size;
+}
+.realm-layer > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+/* A parallaxis eltolását a script/realm.js írja közvetlenül a kis rétegekre
+   (a tájrétegek állnak). A will-change saját réteget ad nekik: mozgatáskor
+   nem festődnek újra. */
+.realm-drift, .realm-moon, .realm-aurora { will-change: translate; }
+
+/*
+ * Elemek elhelyezése a táj SAJÁT koordinátáiban (1600×900-as viewBox).
+ * A kép `cover` + alulra igazítva skálázódik, így egy viewBox-egység
+ * mérete max(szélesség/1600, magasság/900) — a konténer-egységekkel ez
+ * CSS-ből kiszámolható, és az elem pontosan a rajzon marad bármilyen
+ * képarányon.
+ */
+.realm-at {
+  --u: max(calc(100cqw / 1600), calc(100cqh / 900));
+  position: absolute;
+  left: calc(50% + (var(--x) - 800) * var(--u));
+  bottom: calc((900 - var(--y)) * var(--u));
+  width: calc(var(--w) * var(--u));
+  margin-left: calc(var(--w) * var(--u) * -.5);
+}
+.realm-at > img { display: block; width: 100%; height: auto; }
+
+/* Drakkar: lassú ringatózás */
+.realm-ship {
+  transform-origin: 50% 80%;
+  animation: realmShip 9s ease-in-out infinite;
+}
+@keyframes realmShip {
+  0%, 100% { transform: translate3d(0, 0, 0)     rotate(-1.2deg); }
+  50%      { transform: translate3d(0, -.35%, 0) rotate(1.1deg);  }
+}
+
+/* A hosszúház tűzfénye */
+.realm-hearth {
+  aspect-ratio: 1.8;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 160, 70, .42), rgba(255, 120, 40, .12) 55%, transparent);
+  animation: realmHearth 3.6s ease-in-out infinite;
+}
+@keyframes realmHearth {
+  0%, 100% { opacity: .75; }
+  23%      { opacity: 1;   }
+  41%      { opacity: .62; }
+  67%      { opacity: .92; }
+}
+
+/* Rúnakövek: a kő áll, a fénye lüktet */
+.realm-stone-glow {
+  position: absolute;
+  inset: 5% -30% 0;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(closest-side, rgba(79, 255, 224, .22), transparent);
+  animation: realmStone var(--pulse) ease-in-out var(--pd) infinite;
+}
+@keyframes realmStone {
+  0%, 100% { opacity: .35; }
+  50%      { opacity: 1;   }
+}
+
+/* --- Köd ------------------------------------------------------------ */
+.realm-mist {
+  position: absolute;
+  left: -60%;
+  width: 220%;
+  pointer-events: none;
+  background:
+    radial-gradient(28% 50% at 12% 60%, rgba(150, 180, 230, .22), transparent 70%),
+    radial-gradient(22% 45% at 38% 50%, rgba(150, 180, 230, .16), transparent 70%),
+    radial-gradient(30% 55% at 63% 62%, rgba(150, 180, 230, .20), transparent 70%),
+    radial-gradient(24% 50% at 88% 50%, rgba(150, 180, 230, .15), transparent 70%);
+}
+.realm-mist-back  { bottom: 14vh; height: 24vh; opacity: .8; animation: realmMist 120s ease-in-out infinite alternate; }
+.realm-mist-front { bottom: -4vh; height: 22vh; opacity: .6; animation: realmMist 90s ease-in-out -30s infinite alternate-reverse; }
+
+@keyframes realmMist {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(22%, 0, 0); }
+}
+
+/* --- Lebegő tárgyak ------------------------------------------------- */
+.realm-drift {
+  position: absolute;
+  inset: 0;
+  perspective: 700px;
+}
+.realm-drift > * {
+  position: absolute;
+  left: var(--x);
+  bottom: -8vh;
+  opacity: 0;
+  animation: realmRise var(--dur) linear var(--delay) infinite;
+}
+@keyframes realmRise {
+  0%   { opacity: 0;         transform: translate3d(0, 0, 0) rotateY(0turn) rotateZ(0deg); }
+  12%  { opacity: var(--op); }
+  82%  { opacity: var(--op); }
+  100% { opacity: 0;         transform: translate3d(var(--sway), -118vh, 0) rotateY(var(--spin)) rotateZ(var(--rot)); }
+}
+
+.drift-rune {
+  font-family: 'Noto Sans Runic', 'Segoe UI Historic', serif;
+  font-size: var(--size);
+  line-height: 1;
+  color: #8ffbe9;
+  text-shadow: 0 0 8px rgba(79, 255, 224, .9), 0 0 22px rgba(79, 214, 255, .5);
+}
+.drift-ember {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #ffd08a;
+  box-shadow: 0 0 8px 2px rgba(255, 138, 61, .75);
+}
+.drift-artifact {
+  width: var(--size);
+  height: var(--size);
+  color: #d8e4ff;
+  filter: drop-shadow(0 0 6px rgba(120, 220, 255, .55));
+}
+.drift-mjolnir, .drift-axe, .drift-horn { color: #ffd9a6; filter: drop-shadow(0 0 6px rgba(255, 160, 80, .5)); }
+
+.realm-sprites { position: absolute; width: 0; height: 0; }
+
+/* Szélek sötétítése + felül egy kis árnyék a fejléc mögé */
+.realm-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 4, 10, .55), transparent 18%),
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(2, 4, 10, .6));
+}
+
+/* --- Könnyített mód ------------------------------------------------- */
+html.realm-lite .realm-mist,
+html.realm-lite .realm-drift > :nth-child(2n) { display: none; }
+html.realm-lite .realm-aurora { animation: none; }
+html.realm-lite .realm-drift > .drift-artifact { filter: none; }
+html.realm-lite .realm-layer,
+html.realm-lite .realm-moon,
+html.realm-lite .realm-drift,
+html.realm-lite .realm-aurora { will-change: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .realm-drift { display: none; }
+}
+
+/* Keskeny kijelzőn a hold kisebb és a sarokba húzódik, hogy ne a cím mögé essen */
+@media (max-width: 640px) {
+  .realm-moon { top: 10vh; right: -4vw; width: 104px; opacity: .85; }
+  .realm-aurora { height: 48vh; }
+}

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512"
+     shape-rendering="geometricPrecision">
+<defs>
+  <!-- Lagy tonusatmenet. Szandekosan nem megy le a legsotetebb arnyekig:
+       a kemeny sotet foltok a format nem terfogatosnak, hanem koszosnak
+       mutatjak. A melyebb arnyekot kulon retegek adjak. -->
+  <linearGradient id="w14-vol" x1="0.18" y1="0.02" x2="0.82" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.30" stop-color="#bdbdbd"/>
+    <stop offset="0.66" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <!-- Fuggoleges valtozat. Hosszukas alakzatoknal (fej, lab) a ferde
+       atmenet ugy hat, mintha sotet sapka lenne rajtuk; a felulrol jovo
+       fenyhez a fuggoleges a termeszetes. -->
+  <linearGradient id="w14-volV" x1="0.42" y1="0" x2="0.58" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.34" stop-color="#bdbdbd"/>
+    <stop offset="0.74" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <linearGradient id="w14-vol2" x1="0.2" y1="0" x2="0.8" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.5"  stop-color="#5d5d5d"/>
+    <stop offset="1"    stop-color="#3b3b3b"/>
+  </linearGradient>
+  <!-- A membran a test fenyiranyat koveti: bal-felul vilagos. Forditva
+       (sotet tetovel) a szarny fekete folttal ult a vilagos sarkanyon. -->
+  <linearGradient id="w14-membrane" x1="0.12" y1="0" x2="0.78" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.45" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <radialGradient id="w14-sheen" cx="0.34" cy="0.24" r="0.95">
+    <stop offset="0"    stop-color="#fbfbfb" stop-opacity="0.62"/>
+    <stop offset="0.38" stop-color="#fbfbfb" stop-opacity="0.22"/>
+    <stop offset="1"    stop-color="#fbfbfb" stop-opacity="0"/>
+  </radialGradient>
+
+</defs>
+<g id="w14"><path d="M36,27L34,17.56L39.21,14.95L43.42,0.28ZM36,27L43.42,0.28L45.77,12.22L53.68,9.39ZM36,27L53.68,9.39L50.43,19.18L57.4,21.15ZM36,27L57.4,21.15L50.8,26.65L54.81,31.8Z" fill="url(#w14-membrane)" stroke="#101010" stroke-width="1.4" stroke-linejoin="round"/><path d="M36,27L43.42,0.28M36,27L53.68,9.39M36,27L57.4,21.15M36,27L54.81,31.8" fill="none" stroke="#fbfbfb" stroke-width="0.9" opacity="0.7"/></g>
+</svg>

@@ -1,0 +1,342 @@
+/* =====================================================================
+   Játékszabályok — grafikától független, tiszta logika
+   ---------------------------------------------------------------------
+   A sárkány harci értékei a testrészeiből jönnek:
+
+     FEJ    → különleges képesség (a fej FORMÁJA szerint)
+     TEST   → páncél, életerő-szorzó
+     LÁB    → páncél, gyorsaság
+     SZÁRNY → gyorsaság, kitérés (a szárny méretével szorozva)
+
+   Az életerő és a sebzés alapja ugyanaz, mint az oldal többi részén
+   (a testrészek HP/DMG összege), erre jön a szint, a nemzedék és a
+   vonások bónusza.
+   ===================================================================== */
+
+export const SLOTS = ['fej', 'test', 'lab', 'szarny'];
+export const SLOT_NAMES = { fej: 'Fej', test: 'Test', lab: 'Láb', szarny: 'Szárny' };
+
+/* --- Képességek (a fej formájából) --------------------------------- */
+export const SKILLS = {
+  fire:    { name: 'Lángcsóva',    rune: 'ᚲ', color: 0xff8a3d, desc: '135% sebzés, 3 körig ég a célpont' },
+  crush:   { name: 'Zúzó harapás', rune: 'ᚦ', color: 0xd9c7a1, desc: '150% sebzés, 35% eséllyel elkábít' },
+  pierce:  { name: 'Átdöfés',      rune: 'ᛏ', color: 0xe8f1ff, desc: '140% sebzés, átüti a páncélt' },
+  thunder: { name: 'Viharüvöltés', rune: 'ᛊ', color: 0x9fd8ff, desc: '75% sebzés MINDEN ellenfélre' },
+  drain:   { name: 'Lélekszívás',  rune: 'ᛗ', color: 0xff5d7a, desc: '120% sebzés, a fele visszagyógyul' },
+  venom:   { name: 'Méregfog',     rune: 'ᛃ', color: 0x7dff6a, desc: '100% sebzés, 4 körig mérgez' },
+  charge:  { name: 'Rohamdöfés',   rune: 'ᚢ', color: 0xffc46b, desc: '190% sebzés, de 12% visszaüt' },
+  frost:   { name: 'Jégszilánk',   rune: 'ᛁ', color: 0x7ce7ff, desc: '120% sebzés, 40% eséllyel megfagyaszt' },
+  tail:    { name: 'Farokcsapás',  rune: 'ᚱ', color: 0xc9d3ea, desc: '110% sebzés (fej nélkül)' },
+};
+
+/* --- Tanult technikák (a Gyakorlótéren, Ragnhildtól) -----------------
+   target: 'enemy' egy ellenfél · 'all' minden ellenfél · 'ally' a
+   legsebesültebb társ · 'party' az egész csapat · 'self' önmaga */
+/* `src`: ki tanítja. Ragnhild a sajátjait mindig; a többit csak az adott
+   helyen lehet először elsajátítani (a völgyben szétszórva, játékosonként
+   máshol) — utána Ragnhild is begyakoroltatja bármelyik sárkánnyal. */
+export const TECHNIQUES = {
+  mark:       { name: 'Rúnabélyeg',     rune: 'ᛉ', color: 0xff6b6b, cost: 1, lvl: 2,  price: 35, target: 'enemy', src: 'ragnhild',
+                desc: '60% sebzés, és a célpont 3 körig +30% sebzést kap mindenkitől' },
+  warcry:     { name: 'Harci üvöltés',  rune: 'ᛜ', color: 0xffc46b, cost: 2, lvl: 3,  price: 45, target: 'party', src: 'ragnhild',
+                desc: 'Az egész csapat +25% sebzést okoz 3 körig' },
+  shieldwall: { name: 'Pajzsfal',       rune: 'ᛒ', color: 0x7ce7ff, cost: 1, lvl: 4,  price: 45, target: 'party', src: 'ragnhild',
+                desc: 'Az egész csapat 30%-kal kevesebb sebzést kap 2 körig' },
+  galdr:      { name: 'Gyógyító galdr', rune: 'ᛚ', color: 0x7dffb0, cost: 2, lvl: 2,  price: 30, target: 'ally', src: 'hermit',
+                desc: 'A legsebesültebb társ 30%-ot gyógyul, és lemossa róla az égést és a mérget' },
+  shadow:     { name: 'Árnyéklépés',    rune: 'ᛇ', color: 0xb18cff, cost: 1, lvl: 6,  price: 55, target: 'self', src: 'hermit',
+                desc: 'A következő támadása biztos kritikus, addig pedig +40% eséllyel kitér' },
+  thorns:     { name: 'Tüskepáncél',    rune: 'ᚦ', color: 0xc9a27e, cost: 1, lvl: 5,  price: 50, target: 'self', src: 'dwarf',
+                desc: '3 körig a rá mért sebzés 35%-át visszaüti a támadóra' },
+  quake:      { name: 'Földrengés',     rune: 'ᛞ', color: 0xd9a066, cost: 3, lvl: 10, price: 80, target: 'all', src: 'dwarf',
+                desc: '100% sebzés minden ellenfélre, 25% eséllyel elkábít' },
+  gale:       { name: 'Szélörvény',     rune: 'ᚹ', color: 0xc9f0ff, cost: 2, lvl: 8,  price: 60, target: 'all', src: 'frost',
+                desc: '65% sebzés minden ellenfélre, és 2 körig lelassítja őket' },
+  meteor:     { name: 'Hullócsillag',   rune: 'ᚺ', color: 0xff7a3d, cost: 3, lvl: 12, price: 95, target: 'enemy', src: 'muspell',
+                desc: '260% sebzés egy célpontra — kitérni nem lehet előle' },
+};
+
+/* --- Ultik: a harci ének teli sávjával, a csapat közös csapásai -------
+   Mindegyiket máshol lehet elnyerni; ha több is van, a játékos választ. */
+export const ULTIMATES = {
+  chorus:   { name: 'Sárkánykórus',    rune: 'ᛟ', color: 0xffe08a, from: 'Ragnhild, a Gyakorlótéren',
+              desc: 'Minden sárkányod egyszerre okád — páncélon át, minden ellenfélre' },
+  muspell:  { name: 'Muspell lángja',  rune: 'ᚲ', color: 0xff6a1f, from: 'a Muspell-oltár (a hamuvidéken)',
+              desc: 'Tűzeső hullik minden ellenfélre, és 3 körig lángra kapnak' },
+  fimbul:   { name: 'Fimbul-tél',      rune: 'ᛁ', color: 0x9fe8ff, from: 'a Fagyóriás trónja (a havas északon)',
+              desc: 'Hóvihar: sebzés mindenkire, 55% eséllyel megfagyaszt, és 2 körig lassít' },
+  valhalla: { name: 'Valkűrök áldása', rune: 'ᛒ', color: 0xfff3c4, from: 'a Valkűr-kő',
+              desc: 'A csapat 55%-ot gyógyul, az elájultak felállnak, és 2 körig pajzsfal védi őket' },
+  gungnir:  { name: 'Gungnir',         rune: 'ᚷ', color: 0xc9f0ff, from: 'a Vándor (aki sosem marad egy helyen)',
+              desc: 'Odin dárdája: biztos kritikus, páncélon átütő csapás egy ellenfélre' },
+};
+
+/* --- Ereklyék: a csapat minden sárkányára ható, tartós áldások -------- */
+export const RELICS = {
+  mjolnir:     { name: 'Mjölnir-amulett',     icon: '🔨', desc: '+6% sebzés',               atk: 0.06 },
+  brisingamen: { name: 'Brísingamen gyöngye', icon: '📿', desc: '+8% életerő',              hp: 0.08 },
+  huginn:      { name: 'Huginn tolla',        icon: '🪶', desc: '+4 gyorsaság',             spd: 4 },
+  skofnung:    { name: 'Sköfnung-pikkely',    icon: '🛡', desc: '+4 páncél',                def: 4 },
+  draupnir:    { name: 'Draupnir gyűrűje',    icon: '💍', desc: '+25% rúnaszilánk a csatákból', shards: 0.25 },
+  gjallar:     { name: 'Gjallarhorn szilánkja', icon: '📯', desc: 'A harci ének 25%-kal gyorsabban telik', chorus: 0.25 },
+};
+
+/** Csak Níðhöggr ismeri. */
+export const BOSS_TECH = {
+  root: { name: 'Gyökérrontás', rune: 'ᚾ', color: 0x9d6bff, cost: 2, target: 'all', desc: '70% sebzés mindenkire, és 3 körig mérgez' },
+};
+export const techInfo = (k) => TECHNIQUES[k] || BOSS_TECH[k];
+
+/** Hány technikát tudhat egy sárkány: a második hely a 8. szinten nyílik. */
+export const techSlots = (level) => (level >= 8 ? 2 : 1);
+
+/* --- A csapat közös csapása (Ragnhild tanítja a II. fejezetben) ----- */
+export const CHORUS = {
+  name: 'Sárkánykórus', rune: 'ᛟ', color: 0xffe08a, max: 100,
+  desc: 'Minden sárkányod egyszerre okád — páncélon át, minden ellenfélre',
+  gain: { hit: 7, crit: 6, hurt: 6, ko: 14 },
+};
+
+/* --- Edzés: tartós fokozatok sárkányonként -------------------------- */
+export const TRAIN = {
+  atk: { name: 'Erő',          icon: '⚔', max: 5, per: 0.04, desc: '+4% sebzés fokonként' },
+  def: { name: 'Páncél',       icon: '🛡', max: 5, per: 3,    desc: '+3 páncél fokonként' },
+  spd: { name: 'Fürgeség',     icon: '➶', max: 5, per: 3,    desc: '+3 gyorsaság fokonként' },
+  hp:  { name: 'Állóképesség', icon: '❤', max: 5, per: 0.05, desc: '+5% életerő fokonként' },
+};
+export const drillCost = (rank) => 25 + rank * 15;
+
+const HEAD_SKILL = {
+  snout: 'fire', blunt: 'crush', beak: 'pierce', crest: 'thunder',
+  skull: 'drain', viper: 'venom', horned: 'charge', crystal: 'frost',
+};
+
+const BODY = {
+  standard: { def: 10 },
+  stocky:   { def: 16, hp: 1.10, spd: -4 },
+  arched:   { def: 12, hp: 1.03 },
+  serpent:  { def: 6,  spd: 8 },
+  long:     { def: 8,  spd: 4, hp: 1.05 },
+  skeletal: { def: 5,  atk: 1.08 },
+};
+const LEGS = {
+  digit:  { def: 4,  spd: 6 },
+  pillar: { def: 10, spd: -6 },
+  lanky:  { def: 0,  spd: 12 },
+  hoof:   { def: 5,  spd: 8 },
+  grasp:  { def: 6,  crit: 0.05 },
+};
+const WINGS = {
+  bat:     { spd: 10, eva: 0.05 },
+  feather: { spd: 14, eva: 0.08 },
+  insect:  { spd: 20, eva: 0.12 },
+  fin:     { spd: 4,  eva: 0.02 },
+  crystal: { spd: 8,  eva: 0.04, def: 4 },
+  double:  { spd: 16, eva: 0.06 },
+  torn:    { spd: 6,  eva: 0.03, crit: 0.05 },
+};
+
+/* --- Szint ----------------------------------------------------------- */
+export const MAX_LEVEL = 40;
+export const levelOf    = (xp) => Math.min(MAX_LEVEL, Math.floor(Math.sqrt(Math.max(0, xp) / 30)) + 1);
+export const xpForLevel = (lvl) => 30 * (lvl - 1) * (lvl - 1);
+
+/* --- Álvéletlen (a térképnek és a vad sárkányoknak) ------------------ */
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+export const pick = (arr, rng = Math.random) => arr[Math.floor(rng() * arr.length)];
+
+/**
+ * A sárkány harci értékei.
+ * @param {object} d        {fej,test,lab,szarny,hp,dmg,xp,gen,traits}
+ * @param {object} catalog  a szerver katalógusa (forma, méret)
+ */
+export function deriveStats(d, catalog, extra = {}) {
+  const shape = (slot) => (d[slot] ? catalog[slot]?.[d[slot]]?.shape : null);
+  const body  = BODY[shape('test')]  || { def: 3 };
+  const legs  = LEGS[shape('lab')]   || { def: 0, spd: -8 };
+  const wings = WINGS[shape('szarny')] || { spd: 0, eva: 0 };
+  const wingSize = d.szarny ? (catalog.szarny?.[d.szarny]?.size ?? 1) : 1;
+
+  let def  = 2 + (body.def || 0) + (legs.def || 0) + (wings.def || 0);
+  let spd  = 50 + (body.spd || 0) + (legs.spd || 0) + (wings.spd || 0) * wingSize;
+  let eva  = 0.02 + (wings.eva || 0) * wingSize;
+  let crit = 0.08 + (legs.crit || 0) + (wings.crit || 0);
+  let hpMul  = body.hp || 1;
+  let atkMul = body.atk || 1;
+
+  const level  = extra.level ?? levelOf(d.xp || 0);
+  const growth = 1 + 0.05 * (level - 1) + 0.04 * (d.gen || 0);
+
+  const traits = new Set(d.traits || []);
+  if (traits.has('ancient'))   hpMul *= 1.12;
+  if (traits.has('storm'))     spd += 12;
+  if (traits.has('ironscale')) def += 8;
+  if (traits.has('fated'))     crit += 0.08;
+
+  // Edzésfokozatok (a Gyakorlótéren szerzett, tartós bónusz)
+  const tr = extra.train || {};
+  hpMul  *= 1 + TRAIN.hp.per  * (tr.hp  || 0);
+  atkMul *= 1 + TRAIN.atk.per * (tr.atk || 0);
+  def    += TRAIN.def.per * (tr.def || 0);
+  spd    += TRAIN.spd.per * (tr.spd || 0);
+
+  // Ereklyék (a csapat közös kincsei)
+  for (const k of extra.relics || []) {
+    const r = RELICS[k];
+    if (!r) continue;
+    atkMul *= 1 + (r.atk || 0);
+    hpMul  *= 1 + (r.hp || 0);
+    spd += r.spd || 0;
+    def += r.def || 0;
+  }
+
+  // A vadon élő sárkányok az első fokokon gyengébbek (betanítatlan
+  // vadak) — különben egy friss kezdő sárkány az első barlangban elvérzik.
+  const WILD = { 1: 0.6, 2: 0.68, 3: 0.74, 4: 0.64, 5: 0.64 };
+  const wild = d.wild && !extra.boss ? WILD[d.tier] || 1 : 1;
+  const bossMul = extra.boss ? { hp: 1.9, atk: 1.05 } : { hp: wild, atk: wild };
+
+  return {
+    maxHp: Math.round(Math.max(30, d.hp || 0) * 1.2 * hpMul * growth * bossMul.hp),
+    atk:   Math.round(Math.max(8, d.dmg || 0) * atkMul * growth * bossMul.atk),
+    def:   Math.round(def),
+    spd:   Math.round(spd),
+    eva:   Math.min(0.3, eva),
+    crit:  Math.min(0.5, crit),
+    skill: HEAD_SKILL[shape('fej')] || 'tail',
+    level,
+    traits,
+  };
+}
+
+/* =====================================================================
+   Harc
+   ===================================================================== */
+
+/**
+ * Egy találat kiszámítása.
+ * @returns {{amount:number, crit:boolean, miss:boolean}}
+ */
+export function rollDamage(att, tgt, mult, opts = {}) {
+  const rng = opts.rng || Math.random;
+  const has = (u, k) => (u.status?.[k] || 0) > 0;
+  const eva = tgt.stats.eva + (has(tgt, 'shadow') ? 0.4 : 0);
+  if (!opts.sure && rng() < eva) return { amount: 0, crit: false, miss: true };
+
+  const defense = opts.pierce ? 0 : tgt.stats.def;
+  let dmg = att.stats.atk * 0.9 * mult * (0.88 + rng() * 0.24) * (60 / (60 + defense));
+
+  if (att.stats.traits.has('berserk') && att.hp < att.stats.maxHp / 2) dmg *= 1.2;
+  if (opts.fire && att.stats.traits.has('fireblood')) dmg *= 1.15;
+  if (has(att, 'atkUp')) dmg *= 1.25;
+  if (has(tgt, 'ward'))  dmg *= 0.7;
+  if (has(tgt, 'mark'))  dmg *= 1.3;
+  if (tgt.defending) dmg *= 0.5;
+
+  const crit = opts.forceCrit || has(att, 'shadow') || rng() < att.stats.crit;
+  if (crit) dmg *= 1.6;
+  return { amount: Math.max(1, Math.round(dmg)), crit, miss: false };
+}
+
+/** Energia: támadás és védekezés +1, a különleges képesség 2-be kerül. */
+export const MAX_ENERGY = 3;
+export const SKILL_COST = 2;
+
+/* =====================================================================
+   Vadon élő sárkányok
+   ===================================================================== */
+
+export const CAVES = {
+  1: { name: 'Mohos barlang',     color: 0x5fd18a, palette: ['#7bd88f', '#a3c46b', '#5fb3a1', '#c2d66b'], waves: [1, 1, 1] },
+  2: { name: 'Fagyott Torok',     color: 0x7ce7ff, palette: ['#8fd3ff', '#b9e6ff', '#6fa8ff', '#d9f2ff'], waves: [1, 2, 2] },
+  3: { name: 'Suttogó Mélység',   color: 0xb18cff, palette: ['#9d7bff', '#c28cff', '#6f6bd8', '#e08cff'], waves: [2, 2, 3] },
+  4: { name: 'Hamuverem',         color: 0xff7a3d, palette: ['#ff6a3d', '#ff9a3d', '#d94a2a', '#ffc46b'], waves: [2, 3, 3] },
+  5: { name: 'Níðhöggr Gyökere',  color: 0xffd36b, palette: ['#3a2a55', '#55304a', '#2a3a55'],            waves: [2, 2, 2] },
+};
+
+const NAME_A = ['Moha', 'Hamu', 'Jég', 'Kő', 'Vihar', 'Árny', 'Rozsda', 'Szirt', 'Köd', 'Parázs', 'Fagy', 'Tövis', 'Csont', 'Éj'];
+const NAME_B = ['karmú', 'farkú', 'fogú', 'szárnyú', 'szemű', 'taréjú', 'pikkelyű', 'torkú', 'hátú', 'lelkű'];
+
+/* A mélyebb barlangok lakói harcedzettek: egy technikát ők is ismernek
+   (a II. fokon csak némelyik, az I. fokon egyik sem — ott tanul a kezdő). */
+const WILD_TECH = {
+  2: ['mark', 'shieldwall'],
+  3: ['mark', 'warcry', 'galdr'],
+  4: ['warcry', 'gale', 'shieldwall', 'galdr'],
+  5: ['gale', 'quake', 'warcry'],
+};
+const wildTech = (tier, rng) => {
+  if (tier < 2 || (tier === 2 && rng() > 0.3)) return [];
+  return [pick(WILD_TECH[tier], rng)];
+};
+
+/** Gyakorló ellenfél Ragnhild karámjából, a csapat szintjéhez igazítva. */
+export function makeSparring(level, tiers, i, rng = Math.random) {
+  const tier = Math.max(1, Math.min(4, Math.ceil(level / 4)));
+  const parts = {};
+  for (const s of SLOTS) parts[s] = pick(tiers[s][tier], rng);
+  const names = ['Szélvész', 'Kőszív', 'Vasfarok'];
+  return {
+    id: `spar-${i}-${Math.floor(rng() * 1e9)}`, wild: true, spar: true, tier,
+    nev: names[i % names.length], szin: ['#d9c7a1', '#c96b4a', '#8fb3ff'][i % 3],
+    ...parts, hp: 0, dmg: 0,
+    xp: xpForLevel(Math.max(1, level)), gen: 0, traits: [],
+    tech: [pick(['mark', 'warcry', 'shieldwall', 'galdr'], rng)],
+  };
+}
+
+/** A barlang egy lakója. A boss (5. fok utolsó hulláma) Níðhöggr maga. */
+export function makeWild(tier, wave, tiers, rng = Math.random, boss = false) {
+  const level = Math.min(MAX_LEVEL, 1 + (tier - 1) * 4 + wave + (boss ? 1 : 0) + Math.floor(rng() * 2));
+  if (boss) {
+    return {
+      id: `wild-boss`, wild: true, boss: true, tier,
+      nev: 'Níðhöggr, a Gyökérrágó', szin: '#4a2f6b',
+      fej: 9, test: 9, lab: 9, szarny: 9,
+      hp: 400, dmg: 90, xp: xpForLevel(level), gen: 0, traits: ['ironscale'],
+      tech: ['root', 'mark'],
+    };
+  }
+  const parts = {};
+  for (const s of SLOTS) parts[s] = pick(tiers[s][tier], rng);
+  return {
+    id: `wild-${tier}-${wave}-${Math.floor(rng() * 1e9)}`, wild: true, tier,
+    nev: `${pick(NAME_A, rng)}${pick(NAME_B, rng)}`,
+    szin: pick(CAVES[tier].palette, rng),
+    ...parts,
+    hp: 0, dmg: 0,                 // a katalógusból számolódik (lásd withTotals)
+    xp: xpForLevel(level), gen: 0,
+    traits: rng() < 0.08 * tier ? [pick(['ironscale', 'storm', 'berserk', 'regen', 'fated'], rng)] : [],
+    tech: wildTech(tier, rng),
+  };
+}
+
+/** HP/DMG a testrészekből — ugyanúgy, ahogy a szerver számolja. */
+export function withTotals(d, catalog) {
+  if (d.boss) return d;
+  let hp = 0, dmg = 0;
+  for (const s of SLOTS) {
+    const p = d[s] ? catalog[s]?.[d[s]] : null;
+    if (p) { hp += p.hp; dmg += p.dmg; }
+  }
+  return { ...d, hp, dmg };
+}
+
+/* =====================================================================
+   Jutalmak
+   ===================================================================== */
+export const shardsFor = (enemyLevel) => 5 + enemyLevel * 4;
+export const xpFor     = (enemyLevel) => 10 + enemyLevel * 9;
+export const caveBonus = (tier) => 40 * tier;
+export const TAME_CHANCE = 0.4;
+export const TAME_COST   = 25;
+export const breedCost   = (gen) => 40 + 20 * Math.max(0, gen - 1);

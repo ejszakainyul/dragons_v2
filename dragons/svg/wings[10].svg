@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512"
+     shape-rendering="geometricPrecision">
+<defs>
+  <!-- Lagy tonusatmenet. Szandekosan nem megy le a legsotetebb arnyekig:
+       a kemeny sotet foltok a format nem terfogatosnak, hanem koszosnak
+       mutatjak. A melyebb arnyekot kulon retegek adjak. -->
+  <linearGradient id="w10-vol" x1="0.18" y1="0.02" x2="0.82" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.30" stop-color="#bdbdbd"/>
+    <stop offset="0.66" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <!-- Fuggoleges valtozat. Hosszukas alakzatoknal (fej, lab) a ferde
+       atmenet ugy hat, mintha sotet sapka lenne rajtuk; a felulrol jovo
+       fenyhez a fuggoleges a termeszetes. -->
+  <linearGradient id="w10-volV" x1="0.42" y1="0" x2="0.58" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.34" stop-color="#bdbdbd"/>
+    <stop offset="0.74" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <linearGradient id="w10-vol2" x1="0.2" y1="0" x2="0.8" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.5"  stop-color="#5d5d5d"/>
+    <stop offset="1"    stop-color="#3b3b3b"/>
+  </linearGradient>
+  <!-- A membran a test fenyiranyat koveti: bal-felul vilagos. Forditva
+       (sotet tetovel) a szarny fekete folttal ult a vilagos sarkanyon. -->
+  <linearGradient id="w10-membrane" x1="0.12" y1="0" x2="0.78" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.45" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <radialGradient id="w10-sheen" cx="0.34" cy="0.24" r="0.95">
+    <stop offset="0"    stop-color="#fbfbfb" stop-opacity="0.62"/>
+    <stop offset="0.38" stop-color="#fbfbfb" stop-opacity="0.22"/>
+    <stop offset="1"    stop-color="#fbfbfb" stop-opacity="0"/>
+  </radialGradient>
+
+</defs>
+<g id="w10"><path d="M39.81,27C39.81,27.35 39.74,27.71 39.62,28.04C39.5,28.37 39.31,28.69 39.08,28.97C38.85,29.25 38.56,29.51 38.24,29.72C37.92,29.92 37.55,30.09 37.18,30.2C36.8,30.3 36.39,30.36 36,30.36C35.61,30.36 35.2,30.3 34.82,30.2C34.45,30.09 34.08,29.92 33.76,29.72C33.44,29.51 33.15,29.25 32.92,28.97C32.69,28.69 32.5,28.37 32.38,28.04C32.26,27.71 32.19,27.35 32.19,27C32.19,26.65 32.26,26.29 32.38,25.96C32.5,25.63 32.69,25.31 32.92,25.03C33.15,24.75 33.44,24.49 33.76,24.28C34.08,24.08 34.45,23.91 34.82,23.8C35.2,23.7 35.61,23.64 36,23.64C36.39,23.64 36.8,23.7 37.18,23.8C37.55,23.91 37.92,24.08 38.24,24.28C38.56,24.49 38.85,24.75 39.08,25.03C39.31,25.31 39.5,25.63 39.62,25.96C39.74,26.29 39.81,26.65 39.81,27Z" fill="#5d5d5d" stroke="#101010" stroke-width="1.2" stroke-linejoin="round"/><path d="M36,27C34.68,30.44 50.17,28.62 60.85,23.5C49.17,21.52 33.78,24.06 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C35.45,30.65 50.63,25.37 60.32,17.94C48.13,18.66 33.19,24.6 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C36.24,30.68 50.33,22.01 58.53,12.46C46.44,15.99 32.74,25.26 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C37.03,30.54 49.26,18.71 55.48,7.34C44.17,13.67 32.45,26 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C37.77,30.24 47.42,15.66 51.25,2.89C41.36,11.83 32.32,26.79 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C38.42,29.78 44.87,13.03 46.01,-0.63C38.13,10.58 32.36,27.59 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/><path d="M36,27C38.96,29.2 41.72,10.98 39.94,-2.98C34.62,10.04 32.57,28.36 36,27Z" fill="url(#w10-membrane)" stroke="#101010" stroke-width="1.1" stroke-linejoin="round"/></g>
+</svg>

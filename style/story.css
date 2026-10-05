@@ -1,0 +1,68 @@
+/* =====================================================================
+   A saga (történetgenerátor)
+   ===================================================================== */
+
+.story-wrap { max-width: 860px; }
+
+.story-quota { margin-top: 14px; }
+
+.story-form { margin-bottom: 34px; }
+.story-form:hover { transform: none; }
+
+.story-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.story-form .btn { width: 100%; }
+
+/* --- Eredmény ------------------------------------------------------- */
+.story-result {
+  position: relative;
+  padding: 40px 42px;
+  background:
+    radial-gradient(80% 130% at 0% 0%, rgba(255, 138, 61, .1), transparent 60%),
+    var(--surface);
+  animation: storyIn .8s var(--ease) both;
+}
+.story-result:hover { transform: none; }
+
+@keyframes storyIn { from { opacity: 0; transform: translateY(22px); } }
+
+.story-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.story-result-head h2 { margin: 0; }
+
+.story-byline { font-size: .88rem; margin-bottom: 24px; }
+
+.story-body {
+  font-size: 1.06rem;
+  line-height: 1.95;
+  color: #dfe7fa;
+  padding-left: 24px;
+  border-left: 2px solid rgba(255, 138, 61, .45);
+}
+
+/* Első betű: iniciálé, mint a kódexekben */
+.story-body::first-letter {
+  float: left;
+  font-family: 'Cinzel', serif;
+  font-size: 3.4rem;
+  line-height: .86;
+  padding: 6px 12px 0 0;
+  color: var(--accent);
+  text-shadow: 0 0 22px rgba(255, 138, 61, .45);
+}
+
+@media (max-width: 640px) {
+  .story-fields { grid-template-columns: 1fr; }
+  .story-result { padding: 28px 22px; }
+  .story-body   { padding-left: 16px; font-size: 1rem; }
+}

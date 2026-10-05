@@ -1,0 +1,395 @@
+/* =====================================================================
+   Főoldal
+   ===================================================================== */
+
+body.home { padding-top: 0; }
+
+/* Az SVG színszűrő-definíciók ne foglaljanak helyet */
+.tint-def { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+/* --- HERO ----------------------------------------------------------- */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: calc(var(--nav-h) + 40px) 0 80px;
+  overflow: hidden;
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: clamp(30px, 5vw, 70px);
+  align-items: center;
+}
+
+.hero-copy,
+.hero-stage { min-width: 0; }
+.hero-copy h1 { margin: 18px 0 20px; }
+
+.hero-lead {
+  font-size: clamp(1.02rem, 1.5vw, 1.22rem);
+  color: var(--muted);
+  max-width: 54ch;
+}
+
+.hero-cta { display: flex; flex-wrap: wrap; gap: 14px; margin: 30px 0 42px; }
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 20px 18px 14px;
+  border-top: 1px solid var(--line);
+  /* A háttérvilág (rúnakövek, fenyők) ide esik — halvány sötét alap,
+     hogy a feliratok olvashatók maradjanak */
+  background: linear-gradient(90deg, rgba(3, 6, 14, .78), rgba(3, 6, 14, .45) 75%, transparent);
+  border-radius: 0 0 12px 12px;
+}
+.hero-stats div { min-width: 0; }
+.hero-stats dt {
+  text-shadow: 0 1px 6px #000;
+  font-size: .72rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.hero-stats dd {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+/* --- Hero színpad --------------------------------------------------- */
+.hero-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 460px;
+}
+
+/* Glória: függőleges rúnakör a sárkány mögött */
+.hero-halo {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  width: min(440px, 88%);
+  aspect-ratio: 1;
+  translate: -50% 0;
+  opacity: .55;
+  pointer-events: none;
+}
+.hero-halo img { width: 100%; height: 100%; animation: heroSpin 90s linear infinite reverse; }
+.hero-halo::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 138, 61, .20), rgba(157, 123, 255, .08) 55%, transparent 70%);
+}
+
+/*
+ * Idézőkör a földön: a rúnagyűrű 3D-ben hátradöntve (rotateX), és a
+ * saját síkjában forog. Ettől lesz térhatása — a sárkány „benne áll".
+ */
+.hero-altar {
+  position: absolute;
+  left: 50%;
+  top: 71%;
+  width: min(470px, 94%);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  perspective: 900px;
+  pointer-events: none;
+}
+.hero-altar::after {                /* fénytócsa a kör közepén */
+  content: '';
+  position: absolute;
+  inset: 30% 12%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(79, 255, 224, .28), transparent);
+  transform: rotateX(74deg);
+  animation: heroPool 5s ease-in-out infinite;
+}
+.altar-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotateX(74deg) rotateZ(0turn);
+  animation: heroAltar 60s linear infinite;
+}
+.altar-ring-2 {
+  inset: 17%;
+  width: 66%;
+  height: 66%;
+  opacity: .85;
+  animation-duration: 38s;
+  animation-direction: reverse;
+}
+@keyframes heroAltar { to { transform: rotateX(74deg) rotateZ(1turn); } }
+@keyframes heroSpin  { to { transform: rotate(1turn); } }
+@keyframes heroPool  { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+
+.hero-dragon {
+  position: relative;
+  width: min(390px, 76%);
+  filter: drop-shadow(0 26px 46px rgba(0,0,0,.65));
+}
+
+.hero-plate {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  translate: -50% 0;
+  min-width: 260px;
+  padding: 14px 26px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(58, 70, 104, .45), transparent 60%),
+    rgba(9, 13, 25, .94);
+  border: 1px solid rgba(138, 150, 184, .3);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md), inset 0 0 0 4px rgba(9, 13, 25, .9), inset 0 0 0 5px rgba(138, 150, 184, .18);
+}
+/* szegecsek a tábla sarkain */
+.hero-plate::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 5px 5px, var(--iron) 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 5px) 5px, var(--iron) 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at 5px calc(100% - 5px), var(--iron) 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), var(--iron) 0 1.8px, transparent 2.6px);
+}
+.hero-plate strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  background: linear-gradient(180deg, #fff6e0, #d9c7a1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-plate .muted { font-size: .8rem; }
+.hero-plate-stats { display: flex; gap: 8px; justify-content: center; margin-top: 9px; }
+
+/* Gomb előtti rúna */
+.btn-rune { font-family: var(--font-rune); font-size: 1.1em; line-height: 1; }
+
+/* --- Görgetésjelző -------------------------------------------------- */
+.hero-scroll {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  translate: -50% 0;
+  width: 24px;
+  height: 40px;
+  border: 2px solid var(--line-strong);
+  border-radius: 999px;
+  display: grid;
+  justify-items: center;
+  padding-top: 7px;
+}
+.hero-scroll span {
+  width: 3px; height: 7px;
+  border-radius: 2px;
+  background: var(--ice);
+  animation: scrollHint 1.7s ease-in-out infinite;
+}
+@keyframes scrollHint {
+  0%, 100% { transform: translateY(0);   opacity: 1;  }
+  60%      { transform: translateY(12px); opacity: 0; }
+}
+
+/* --- Szekciók ------------------------------------------------------- */
+.section-alt { position: relative; }
+.section-alt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, rgba(13,19,34,.6) 22%, rgba(13,19,34,.6) 78%, transparent);
+  pointer-events: none;
+}
+.section-alt > * { position: relative; }
+
+/* --- Út-kártyák ----------------------------------------------------- */
+.path-card {
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  overflow: hidden;
+}
+.path-card:hover { color: var(--text); }
+
+/* Rúnaérem: vasalt kerek pajzsdudor, benne izzó rúna */
+.rune-medal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  font-family: var(--font-rune);
+  font-size: 1.75rem;
+  line-height: 1;
+  color: var(--rune-2);
+  text-shadow: 0 0 10px var(--rune), 0 0 22px rgba(79, 255, 224, .5);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(160, 175, 215, .22), transparent 55%),
+    radial-gradient(circle, #141b30 55%, #0a0e1b);
+  border: 2px solid var(--iron-dark);
+  box-shadow: inset 0 0 0 3px #0a0e1b, inset 0 0 0 4px rgba(138, 150, 184, .35), 0 8px 20px rgba(0, 0, 0, .45);
+  transition: transform .5s var(--ease), color .3s var(--ease);
+}
+/* szaggatott rúnagyűrű, rámutatáskor forog */
+.rune-medal::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1px dashed rgba(79, 255, 224, .35);
+  transition: transform 1.2s var(--ease), border-color .3s var(--ease);
+}
+.path-card:hover .rune-medal { transform: translateY(-3px) scale(1.06); color: #fff; }
+.path-card:hover .rune-medal::after { transform: rotate(120deg); border-color: rgba(79, 255, 224, .7); }
+
+.path-card p { flex: 1; font-size: .95rem; }
+
+.path-cta {
+  color: var(--accent-2);
+  font-weight: 600;
+  font-size: .92rem;
+  display: inline-flex;
+  gap: .4em;
+}
+.path-cta span { transition: transform .3s var(--ease); }
+.path-card:hover .path-cta span { transform: translateX(5px); }
+
+/* --- Sárkány-kártyák ------------------------------------------------ */
+.dragon-card { position: relative; padding-top: 22px; }
+
+.rank-badge {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--accent);
+  opacity: .75;
+}
+
+.dragon-card .dragon-render { width: 72%; margin: 0 auto 10px; }
+
+.dragon-name { margin: 0 0 2px; font-size: 1.12rem; text-align: center; }
+.dragon-owner { text-align: center; font-size: .82rem; margin-bottom: 18px; }
+
+.dragon-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.dragon-stat b { color: var(--text); font-variant-numeric: tabular-nums; }
+.dragon-stat .stat-bar { grid-column: 1 / -1; }
+.dragon-stat .stat-bar > span { width: 0; }
+
+.dragon-foot { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+
+/* --- Rólunk szekció ------------------------------------------------- */
+.about-split {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: clamp(30px, 5vw, 64px);
+  align-items: center;
+}
+
+.feature-list { list-style: none; padding: 0; margin: 0 0 30px; }
+.feature-list li {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 13px;
+  color: var(--muted);
+  font-size: .96rem;
+}
+.feature-list li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--accent);
+  font-size: .75rem;
+}
+.feature-list b { color: var(--text); }
+
+.about-visual {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.showcase-chip {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  transition: transform .35s var(--ease), border-color .35s var(--ease);
+}
+.showcase-chip:hover { transform: translateY(-5px) scale(1.04); border-color: var(--accent); }
+.showcase-chip img {
+  width: 76%;
+  /* A nagy felbontású rajzoknál a sima skálázás a jó;
+     a pixelated itt visszablokkosítaná az éleket. */
+  image-rendering: auto;
+  filter: drop-shadow(0 0 10px rgba(79,214,255,.25));
+}
+.showcase-chip small { font-size: .68rem; color: var(--muted); text-align: center; }
+
+/* --- Záró sáv ------------------------------------------------------- */
+.cta-banner {
+  position: relative;
+  text-align: center;
+  padding: clamp(44px, 7vw, 76px) 30px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(70% 120% at 50% 0%, rgba(255,138,61,.16), transparent 62%),
+    var(--surface);
+  overflow: hidden;
+}
+.cta-banner h2 { margin-bottom: 8px; }
+.cta-banner p { margin-bottom: 26px; }
+
+/* --- Reszponzív ----------------------------------------------------- */
+@media (max-width: 960px) {
+  .hero { min-height: auto; padding-bottom: 60px; }
+  .hero-grid, .about-split { grid-template-columns: 1fr; }
+  .hero-stage { order: -1; min-height: 360px; }
+  .hero-scroll { display: none; }
+  .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+}
+
+@media (max-width: 480px) {
+  /* A díszes Cinzel Decorative széles betű: keskeny kijelzőn kisebb kell */
+  .hero-copy h1 { font-size: clamp(1.8rem, 9.2vw, 2.5rem); }
+  .hero-cta { flex-direction: column; align-items: stretch; }
+  .hero-cta .btn { width: 100%; }
+  .about-visual { grid-template-columns: repeat(2, 1fr); }
+}
