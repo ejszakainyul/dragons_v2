@@ -10,7 +10,9 @@
      is a sárkányon (lángok, buborékok, jég, csillagok, pajzsbuborék…)
    - Sárkánykórus: a csapat harci éneke ütéstől, sebtől, győzelemtől telik;
      teli énekkel minden sárkány egyszerre okád (Q)
-   - Níðhöggr a fele életerejénél dühbe gurul: gyökeret hív és csatlóst
+   - Níðhöggr (boss.js: saját rajz, 2–2,5× akkora) három fázisban harcol:
+     saját mozdulatok, előre jelzett Világvég-lehelet, megtörés-sáv,
+     a 2. fázisban csatlós, a 3.-ban körönként két lépés
    - a végén: szilánk, tapasztalat (szintlépés), és esély a szelídítésre
 
    Látvány: mozis kameramozgás a nagy technikáknál, rövid „ütésmegállás"
@@ -22,16 +24,17 @@
 import {
   SKILLS, CAVES, TECHNIQUES, CHORUS, ULTIMATES, RELICS, techInfo, deriveStats, rollDamage, makeWild, makeSparring,
   withTotals, levelOf, MAX_ENERGY, SKILL_COST, shardsFor, xpFor, caveBonus, TAME_CHANCE, TAME_COST, pick,
-  COMBOS, COMBO_COST, ELEMENTS,
+  COMBOS, COMBO_COST, ELEMENTS, BOSS, bossPhase,
 } from './rules.js';
 import { dragonTextures, makeDragonView, caveBackdrop, arenaBackdrop, fieldBackdrop } from './art.js';
+import { makeBossView, animateBoss, bossMouth } from './boss.js';
 import { esc } from './hud.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 const STATUS_ICON = {
-  burn: '🔥', poison: '☠', freeze: '❄', stun: '💫', atkUp: '💢', ward: '🔷', slow: '🌀', mark: '🎯', shadow: '🌑', thorns: '🌵',
+  burn: '🔥', poison: '☠', freeze: '❄', stun: '💫', atkUp: '💢', ward: '🔷', slow: '🌀', mark: '🎯', shadow: '🌑', thorns: '🌵', broken: '💥',
 };
-const BUFFS = ['atkUp', 'ward', 'slow', 'mark', 'thorns'];      // a hordozó saját köre végén fogynak
+const BUFFS = ['atkUp', 'ward', 'slow', 'mark', 'thorns', 'broken'];      // a hordozó saját köre végén fogynak
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const colorOf = (d) => parseInt(String(d.szin || '#ff8a3d').slice(1), 16) || 0xff8a3d;
 
@@ -63,8 +66,7 @@ export class BattleScene extends Phaser.Scene {
     this.chorusOn = this.ultis.length > 0;
     this.chorus = 0;
     this.relics = new Set(this.g.state.save.relics || []);
-    this.bossRaged = false;
-    this.pendingRage = null;
+    this.pendingPhase = null;
     this.atmo = [];
   }
 
@@ -217,7 +219,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #place(u) {
-    const s = this.slots[u.side][u.slot];
+    if (u.boss) return this.#placeBoss(u);
+    const s = this.#slot(u);
     u.home = { x: s.x, y: s.y - 0.4 * this.S };
     u.view.setPosition(u.home.x, u.home.y).setDepth(s.y);
     u.shadow.setPosition(s.x, s.y).setDisplaySize(this.S * 0.8, this.S * 0.22).setDepth(s.y - 1);
@@ -226,29 +229,57 @@ export class BattleScene extends Phaser.Scene {
     u.ring.setPosition(s.x, s.y).setDepth(s.y - 2);
   }
 
+  /** A hely a csatatéren; a boss mellett a csatlósok előrébb (balra) állnak. */
+  #slot(u) {
+    const s = this.slots[u.side][u.slot];
+    if (u.side !== 'enemy' || !this.units.some((x) => x.boss)) return s;
+    const { width: w } = this.scale;
+    return { x: w * (this.narrow ? 0.5 : 0.54) + (u.slot === 2 ? w * 0.04 : 0), y: this.floorY + (u.slot === 2 ? this.S * 0.32 : -this.S * 0.05) };
+  }
+
+  /** Níðhöggr mérete és helye: a jobb oldalt szinte egészében kitölti. */
+  #bossHeight() { return this.S * (this.narrow ? 1.7 : 2.0); }
+  #placeBoss(u) {
+    const { width: w } = this.scale;
+    const H = this.#bossHeight();
+    const x = w * 0.77, y = this.floorY + this.S * 0.12;
+    u.bossH = H;
+    u.home = { x, y };
+    u.view.setPosition(x, y).setDepth(y).setScale(H / u.bossH0);
+    u.shadow.setPosition(x, y).setDisplaySize(H * 1.4, H * 0.18).setDepth(y - 1);
+    u.zone.setPosition(x - H * 0.15, y - H * 0.45).setSize(H * 1.1, H * 0.85);
+    u.ring.setPosition(x, y).setDepth(y - 2);
+    u.ringScale = [H / 128 * 1.1, H / 128 * 0.22];
+    u.ring.setScale(...u.ringScale);
+    // A boss sávja a képernyő tetején, széles és vastag
+    u.barW = Math.min(w * (this.narrow ? 0.8 : 0.5), 620);
+    u.ui.setPosition(w / 2, this.narrow ? 46 : 58).setDepth(9000).setScrollFactor(0);
+  }
+
   /* ================================================================== */
   /* Egységek                                                            */
   /* ================================================================== */
   async #makeUnit(d, side, slot, extra = {}) {
     const { state } = this.g;
-    const keys = await dragonTextures(this, d, state.catalog, 256);
     const train = side === 'ally' ? state.trainOf(d) : undefined;
     const stats = deriveStats(d, state.catalog, { ...extra, train, relics: side === 'ally' ? state.save.relics : [] });
     const S = this.S;
 
-    const view = makeDragonView(this, keys, S);
+    const bossH0 = extra.boss ? this.#bossHeight() : 0;
+    const view = extra.boss ? makeBossView(this, bossH0) : makeDragonView(this, await dragonTextures(this, d, state.catalog, 256), S);
     const parts = view.getData('parts');
     if (side === 'ally') parts.inner.scaleX = -1;          // a rajz balra néz — a csapat jobbra
 
     const u = {
       d, side, slot, stats, parts, view,
       hp: stats.maxHp, energy: 1, alive: true, defending: false,
-      status: { burn: 0, poison: 0, freeze: 0, stun: 0, atkUp: 0, ward: 0, slow: 0, mark: 0, shadow: 0, thorns: 0 },
+      status: { burn: 0, poison: 0, freeze: 0, stun: 0, atkUp: 0, ward: 0, slow: 0, mark: 0, shadow: 0, thorns: 0, broken: 0 },
       techs: side === 'ally' ? state.learnedOf(d).filter((k) => TECHNIQUES[k]) : (d.tech || []),
       boss: !!extra.boss,
       fx: {},
       tint: 0xffffff,
     };
+    if (u.boss) Object.assign(u, { bossH0, bossH: bossH0, phase: 1, stagger: 0, charging: false, turns: 0, lastCharge: 0, lastSummon: -9 });
     u.shadow = this.add.image(0, 0, 'shadow').setAlpha(0.9);
     u.ringScale = [S / 128 * 0.9, S / 128 * 0.26];
     u.ring = this.add.image(0, 0, 'fx-ring').setTint(side === 'ally' ? 0xffd08a : 0xff6b6b)
@@ -267,12 +298,18 @@ export class BattleScene extends Phaser.Scene {
     u.shownHp = u.hp;
     u.uiStatus = this.add.text(0, 16, '', { fontSize: '14px' }).setOrigin(0.5);
     u.ui.add([u.uiName, u.bar, u.uiStatus]);
+    if (u.boss) {
+      u.uiName.setText(d.nev.toUpperCase()).setFontSize(this.narrow ? 15 : 19).setFontFamily('Cinzel Decorative, Cinzel, serif').setY(-22).setColor('#e9d6ff');
+      u.uiStatus.setY(30);
+    }
 
     this.#place(u);
     this.units.push(u);
     this.#idle(u);
 
-    if (side === 'enemy') {
+    if (u.boss) {
+      await this.#bossEntrance(u);
+    } else if (side === 'enemy') {
       this.g.hud.extraDragons.set(String(d.id), d);
       await this.#entrance(u, slot * 160);
     } else {
@@ -313,6 +350,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #idle(u) {
+    if (u.boss) { u.bossTweens = animateBoss(this, u.view); return; }
     const { wings, head, inner } = u.parts;
     const r = Math.random();
     if (wings) this.tweens.add({ targets: wings, rotation: { from: -0.1, to: 0.12 }, duration: 900 + r * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -327,7 +365,7 @@ export class BattleScene extends Phaser.Scene {
     if (u.shownHp < u.hp) u.shownHp = u.hp;
     this.#drawBar(u);
     const st = Object.entries(u.status).filter(([, v]) => v > 0).map(([k]) => STATUS_ICON[k]).join(' ');
-    u.uiStatus.setText((u.defending ? '🛡 ' : '') + st).setX(u.barW / 4);
+    u.uiStatus.setText((u.defending ? '🛡 ' : '') + (u.charging ? '⚠ ' : '') + st).setX(u.boss ? 0 : u.barW / 4);
     this.#syncFx(u);
     this.#chaseLag(u);
   }
@@ -345,6 +383,7 @@ export class BattleScene extends Phaser.Scene {
 
   #drawBar(u) {
     if (!u.bar.scene) return;
+    if (u.boss) return this.#drawBossBar(u);
     const g = u.bar;
     const w = u.barW, h = 9;
     const pct = Math.max(0, u.hp / u.stats.maxHp);
@@ -359,6 +398,29 @@ export class BattleScene extends Phaser.Scene {
     for (let i = 0; i < MAX_ENERGY; i++) {
       g.fillStyle(i < u.energy ? 0x7ce7ff : 0x2a3350, 1).fillCircle(-w / 2 + 6 + i * 11, 11, 3.6);
     }
+  }
+
+  /** Níðhöggr sávja: életerő a fázishatárokkal, alatta a megtörés-sáv. */
+  #drawBossBar(u) {
+    const g = u.bar, w = u.barW, h = 14;
+    const pct = Math.max(0, u.hp / u.stats.maxHp);
+    const lag = Math.max(pct, u.shownHp / u.stats.maxHp);
+    g.clear();
+    g.fillStyle(0x05070f, 0.9).fillRoundedRect(-w / 2 - 4, -8, w + 8, h + 20, 6);
+    g.lineStyle(2, 0x9d6bff, 0.8).strokeRoundedRect(-w / 2 - 4, -8, w + 8, h + 20, 6);
+    if (lag > pct) g.fillStyle(0xfff3d0, 0.8).fillRect(-w / 2, -4, w * lag, h);
+    const col = u.phase >= 3 ? 0xff3d5a : u.phase === 2 ? 0xc04dff : 0x8a5cff;
+    if (pct > 0) g.fillStyle(col, 1).fillRect(-w / 2, -4, w * pct, h);
+    g.fillStyle(0xffffff, 0.22).fillRect(-w / 2, -4, w * pct, 3);
+    // fázishatárok
+    for (const ph of BOSS.phases) {
+      g.fillStyle(0x05070f, 1).fillRect(-w / 2 + w * ph - 1.5, -6, 3, h + 4);
+      g.fillStyle(0xffd36b, 0.9).fillTriangle(-w / 2 + w * ph - 5, -9, -w / 2 + w * ph + 5, -9, -w / 2 + w * ph, -3);
+    }
+    // megtörés-sáv
+    const st = u.status.broken > 0 ? 1 : Math.min(1, u.stagger / BOSS.staggerMax);
+    g.fillStyle(0x1a1f33, 1).fillRect(-w / 2, h + 1, w, 5);
+    g.fillStyle(u.status.broken > 0 ? 0xffffff : 0xffc46b, 1).fillRect(-w / 2, h + 1, w * st, 5);
   }
 
   /* ================================================================== */
@@ -376,13 +438,15 @@ export class BattleScene extends Phaser.Scene {
 
   /** Egy állapot látványa; a visszaadott lista: { kind: 'obj'|'emitter'|'tween', o }. */
   #makeFx(u, k) {
-    const S = this.S;
+    // A boss tárolójának origója a talpán van, és jóval nagyobb: a hatások a törzsére kerülnek
+    const S = u.boss ? this.S * 1.8 : this.S;
+    const oy = u.boss ? -u.bossH * 0.42 / u.view.scaleY : 0;
     const objs = [];
-    const inView = (o) => { u.view.add(o); objs.push({ kind: 'obj', o }); return o; };
+    const inView = (o) => { o.y += oy; u.view.add(o); objs.push({ kind: 'obj', o }); return o; };
     const loop = (cfg) => { const t = this.tweens.add(cfg); objs.push({ kind: 'tween', o: t }); return t; };
     const emitter = ({ tex = 'fx-dot', ...cfg }) => {
       const e = this.add.particles(0, 0, tex, cfg).setDepth(u.view.depth + 2);
-      e.startFollow(u.view);
+      e.startFollow(u.view, 0, oy * u.view.scaleY);
       objs.push({ kind: 'emitter', o: e });
       return e;
     };
@@ -479,7 +543,7 @@ export class BattleScene extends Phaser.Scene {
   }
   #killAllFx(u) { for (const k of Object.keys(u.fx)) this.#killFx(u.fx[k]); u.fx = {}; }
 
-  #parts(u) { return [u.parts.body, u.parts.legs, u.parts.head, u.parts.wings].filter(Boolean); }
+  #parts(u) { return u.boss ? u.parts.imgs : [u.parts.body, u.parts.legs, u.parts.head, u.parts.wings].filter(Boolean); }
   #setTint(u, c) { u.tint = c; this.#applyTint(u); }
   #applyTint(u) {
     const imgs = this.#parts(u);
@@ -536,10 +600,12 @@ export class BattleScene extends Phaser.Scene {
     if (bossWave) {
       const boss = units[0];
       this.cameras.main.shake(700, 0.012);
-      await this.#camTo(boss.view.x, boss.view.y, 1.18, 700);
+      const bc = this.#center(boss);
+      await this.#camTo(bc.x, bc.y, 1.12, 700);
       const lines = story?.battleLines('nidhoggr', this.tier);
       if (lines) await story.dialogue.play(lines);
       await this.#banner('NÍÐHÖGGR', 'a Gyökérrágó felébredt');
+      hud.battleLog('⚠ Tanács: a találatok töltik a <b>megtörés</b>-sávot (a boss életereje alatt). Ha megtelik, Níðhöggr megtántorodik és <b>+40%</b> sebzést kap. Ha <b>mély lélegzetet vesz</b>, védekezz — vagy törd meg, mielőtt kifújja!');
       await this.#camReset(500);
     }
     hud.battleLog(bossWave ? '<b>Níðhöggr</b> kitárja a szárnyait…'
@@ -558,7 +624,7 @@ export class BattleScene extends Phaser.Scene {
         if (end) return end;
         this.g.hud.turnOrder(order.filter((x) => x.alive), u);
         await this.#turn(u);
-        if (this.pendingRage) await this.#bossRage(this.pendingRage);
+        if (this.pendingPhase) await this.#bossPhase(this.pendingPhase);
         if (this.fled) return 'flee';
       }
       const end = this.#check();
@@ -585,13 +651,30 @@ export class BattleScene extends Phaser.Scene {
     for (const [key, pct, label] of [['burn', 0.06, 'ég'], ['poison', 0.05, 'mérgeződik']]) {
       if (u.status[key] > 0) {
         u.status[key]--;
-        const dmg = Math.max(3, Math.round(u.stats.maxHp * pct));
+        const dmg = Math.max(3, Math.round(u.stats.maxHp * pct * (u.boss ? 0.3 : 1)));
         hud.battleLog(`<b>${esc(u.d.nev)}</b> ${label}: −${dmg}`);
         await this.#damage(u, dmg, false, key === 'burn' ? '#ff9a3d' : '#9dff6a', { dot: true });
         if (!u.alive) return;
       }
     }
     this.#updateBar(u);
+    // Níðhöggrt nem lehet egyszerűen kábítani: lerázza — de a megtörés-sávot tölti
+    if (u.boss && !u.staggered && (u.status.freeze || u.status.stun)) {
+      u.status.freeze = 0; u.status.stun = 0;
+      hud.battleLog('<b>Níðhöggr</b> lerázza a bénítást — de megingott.');
+      this.#addStagger(u, 22);
+      this.#updateBar(u);
+    }
+    if (u.boss && u.staggered) {
+      u.staggered = false;
+      u.status.stun = 0;
+      hud.battleLog('<b>Níðhöggr</b> megtántorodva, <b>kimarad</b>. Most üss!');
+      this.#float(u, '💫', '#ffe066', 34);
+      this.#tickBuffs(u);
+      this.#updateBar(u);
+      await this.#wait(500);
+      return;
+    }
     for (const [key, label] of [['freeze', 'jégbe fagyott, kimarad'], ['stun', 'elkábult, kimarad']]) {
       if (u.status[key] > 0) {
         u.status[key]--;
@@ -696,15 +779,15 @@ export class BattleScene extends Phaser.Scene {
         resolve(val);
       };
       foes.forEach((f, i) => {
-        const m = this.add.text(f.view.x, f.view.y - this.S * 0.78, `▼ ${i + 1}`, {
+        const m = this.add.text(f.boss ? f.view.x - f.bossH * 0.2 : f.view.x, f.boss ? f.view.y - f.bossH * 0.95 : f.view.y - this.S * 0.78, `▼ ${i + 1}`, {
           fontFamily: 'Cinzel, serif', fontSize: '18px', fontStyle: '700', color: '#ffd08a', stroke: '#05070f', strokeThickness: 5,
         }).setOrigin(0.5).setDepth(9500);
         this.tweens.add({ targets: m, y: m.y - 8, duration: 420, yoyo: true, repeat: -1 });
         markers.push(m);
         f.zone.setInteractive({ useHandCursor: true })
           .on('pointerdown', () => { this.g.sfx.click(); cleanup(f); })
-          .on('pointerover', () => f.parts.inner.setScale(f.parts.inner.scaleX > 0 ? 1.05 : -1.05, 1.05))
-          .on('pointerout', () => f.parts.inner.setScale(f.parts.inner.scaleX > 0 ? 1 : -1, 1));
+          .on('pointerover', () => { if (!f.boss) f.parts.inner.setScale(f.parts.inner.scaleX > 0 ? 1.05 : -1.05, 1.05); })
+          .on('pointerout', () => { if (!f.boss) f.parts.inner.setScale(f.parts.inner.scaleX > 0 ? 1 : -1, 1); });
       });
       const onKey = (e) => {
         const n = Number(e.key);
@@ -718,6 +801,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   async #enemyTurn(u) {
+    if (u.boss) return this.#bossTurn(u);
     const allies = this.alive('ally');
     const weakest = allies.reduce((a, b) => (a.hp / a.stats.maxHp < b.hp / b.stats.maxHp ? a : b));
     const target = Math.random() < 0.55 ? weakest : pick(allies);
@@ -747,7 +831,7 @@ export class BattleScene extends Phaser.Scene {
       if (k === 'shieldwall' && friends.some((f) => f.status.ward > 0)) continue;
       if (k === 'shadow' && u.status.shadow > 0) continue;
       if (k === 'thorns' && u.status.thorns > 0) continue;
-      const chance = k === 'root' ? (this.bossRaged ? 0.75 : 0.35) : u.boss ? 0.5 : 0.4;
+      const chance = k === 'root' ? 0.35 : u.boss ? 0.5 : 0.4;
       if (Math.random() < chance) return k;
     }
     return null;
@@ -1724,52 +1808,374 @@ export class BattleScene extends Phaser.Scene {
   /* ================================================================== */
   /* Níðhöggr dühe (a fele életerejénél)                                 */
   /* ================================================================== */
-  async #bossRage(b) {
-    this.pendingRage = null;
-    if (!b.alive || this.bossRaged) return;
-    this.bossRaged = true;
-    const { hud, sfx, story, state } = this.g;
-    const { width: w, height: h } = this.scale;
-    hud.cinematic(true);
-    await this.#camTo(b.view.x, b.view.y, 1.2, 500);
+  /* ================================================================== */
+  /* Níðhöggr — a végső ellenfél                                          */
+  /* ================================================================== */
+  /** A mélyből emelkedik fel: remegő föld, por, aztán üvöltés. */
+  async #bossEntrance(u) {
+    const { sfx } = this.g;
+    const p = u.parts;
+    u.bossTweens?.forEach((t) => t.pause());
+    u.view.y = u.home.y + u.bossH * 0.75;
+    u.view.alpha = 0;
+    u.shadow.alpha = 0;
+    sfx.quake();
+    this.cameras.main.shake(1600, 0.012);
+    const f = this.#feet(u);
+    const dust = this.add.particles(f.x, f.y, 'fx-smoke', {
+      x: { min: -u.bossH * 0.6, max: u.bossH * 0.5 }, speedY: { min: -120, max: -30 }, speedX: { min: -60, max: 60 },
+      lifespan: 1400, scale: { start: 0.8, end: 2.4 }, alpha: { start: 0.5, end: 0 }, tint: 0x6a5a7a, frequency: 30, quantity: 3,
+    }).setDepth(u.view.depth + 5);
+    this.tweens.add({ targets: u.shadow, alpha: 0.9, duration: 1200 });
+    await this.#tween({ targets: u.view, y: u.home.y, alpha: 1, duration: 1500, ease: 'Cubic.easeOut' });
+    dust.stop();
+    this.time.delayedCall(1500, () => dust.destroy());
+    // Üvöltés: tágra nyílt állkapocs, felizzó szemek
     sfx.roar();
-    this.cameras.main.shake(900, 0.018);
-    const lines = story?.battleLines('nidhoggrRage', this.tier);
-    if (lines) await story.dialogue.play(lines);
+    this.cameras.main.shake(500, 0.01);
+    this.tweens.add({ targets: p.eyes, alpha: 1, scale: 4.5, duration: 260, yoyo: true });
+    await this.#tween({ targets: p.jaw, rotation: -0.6, duration: 260, yoyo: true, hold: 500, ease: 'Quad.easeOut' });
+    u.bossTweens?.forEach((t) => t.resume());
+  }
 
-    // A barlang lila fénybe borul, a peremen gyökerek kúsznak elő
-    this.rageTint = this.add.rectangle(w / 2, h / 2, w * 2, h * 2, 0x3a1060, 1).setAlpha(0).setDepth(-3).setBlendMode('MULTIPLY');
-    this.tweens.add({ targets: this.rageTint, alpha: 0.55, duration: 900 });
-    const edge = this.add.graphics().setDepth(-2).setAlpha(0);
-    for (let i = 0; i < 9; i++) {
-      const fromLeft = i % 2 === 0;
-      const x0 = fromLeft ? -10 : w + 10, y0 = h * (0.15 + Math.random() * 0.8);
-      const x1 = fromLeft ? w * (0.08 + Math.random() * 0.1) : w * (0.82 + Math.random() * 0.1), y1 = y0 + (Math.random() - 0.5) * 160;
-      edge.lineStyle(14, 0x1a0b22, 1).beginPath().moveTo(x0, y0).lineTo((x0 + x1) / 2, y0 - 40).lineTo(x1, y1).strokePath();
-      edge.lineStyle(3, 0x9d6bff, 0.6).beginPath().moveTo(x0, y0).lineTo((x0 + x1) / 2, y0 - 40).lineTo(x1, y1).strokePath();
+  /** Megtörés-sáv: ha megtelik, a boss megtántorodik és sebezhető lesz. */
+  #addStagger(b, n) {
+    if (!b.alive || b.status.broken > 0 || b.staggered) return;
+    b.stagger += n;
+    if (b.stagger < BOSS.staggerMax) { this.#updateBar(b); return; }
+    b.stagger = 0;
+    b.staggered = true;
+    b.status.stun = 1;
+    b.status.broken = 2;
+    const { hud, sfx } = this.g;
+    sfx.crack(); sfx.boom();
+    this.cameras.main.shake(400, 0.016);
+    const c = this.#center(b);
+    const t = this.add.text(c.x, c.y - b.bossH * 0.3, 'MEGTÖRT!', {
+      fontFamily: 'Cinzel Decorative, Cinzel, serif', fontSize: '40px', fontStyle: '900', color: '#ffe066', stroke: '#05070f', strokeThickness: 8,
+    }).setOrigin(0.5).setDepth(9800).setScale(0.3);
+    this.tweens.add({ targets: t, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: t, alpha: 0, y: t.y - 40, delay: 1100, duration: 500, onComplete: () => t.destroy() });
+    if (b.charging) {
+      b.charging = false;
+      this.#stopCharge(b);
+      hud.battleLog('<span class="bl-crit">A Világvég-lehelet elfojtva!</span>');
     }
-    this.tweens.add({ targets: edge, alpha: 1, duration: 1200 });
+    // A fej a földre csapódik
+    this.tweens.add({ targets: b.parts.head, rotation: -0.3, y: b.parts.head.y + 30, duration: 220, yoyo: true, hold: 500, ease: 'Quad.easeIn' });
+    hud.battleLog('<span class="bl-crit">💥 Níðhöggr megtört!</span> Kimarad, és két körig <b>+40%</b> sebzést kap.');
+    this.#updateBar(b);
+  }
 
-    b.stats.atk = Math.round(b.stats.atk * 1.15);
-    b.energy = MAX_ENERGY;
-    this.#glow(b, 0x9d6bff, 1400);
-    const aura = this.add.image(0, this.S * 0.05, 'fx-dot').setTint(0x9d6bff).setBlendMode('ADD').setScale(this.S / 14).setAlpha(0.35);
-    b.view.addAt(aura, 0);
-    this.tweens.add({ targets: aura, alpha: { from: 0.2, to: 0.5 }, scale: { from: this.S / 15, to: this.S / 12 }, duration: 700, yoyo: true, repeat: -1 });
-    await this.#banner('A GYÖKÉR DÜHE', 'Níðhöggr csatlóst hív');
-    await this.#camReset(400);
-
-    // Csatlós a szabad helyre
-    const used = new Set(this.alive('enemy').map((e) => e.slot));
-    const slot = [1, 2, 0].find((i) => !used.has(i));
-    if (slot !== undefined) {
-      const raw = makeWild(4, 2, state.tiers);
-      Object.assign(raw, { nev: 'Gyökérfattyú', szin: '#5a3a6b', tech: [], minion: true });
-      const m = await this.#makeUnit(withTotals(raw, state.catalog), 'enemy', slot);
-      this.#updateBar(m);
-      hud.battleLog('A gyökerek közül egy <b>Gyökérfattyú</b> mászik elő!');
+  /** Níðhöggr köre: a 3. fázisban kétszer lép; a feltöltött leheletet kifújja. */
+  async #bossTurn(b) {
+    b.turns++;
+    const acts = b.phase >= 3 ? 2 : 1;
+    for (let i = 0; i < acts; i++) {
+      if (!b.alive || !this.alive('ally').length || b.staggered) return;
+      if (b.charging) { await this.#bossBreath(b); continue; }
+      const key = this.#bossPick(b, i);
+      await this.#bossMove(b, key);
+      if (key === 'charge') return;                 // a feltöltés után a csapat léphet: legyen idő védekezni
+      if (i < acts - 1) await this.#wait(300);
     }
+  }
+
+  #bossPick(b, i) {
+    const ph = b.phase;
+    if (i === 0 && ph >= 2 && b.turns - b.lastCharge >= (ph >= 3 ? 3 : 4)) return 'charge';
+    const pool = ph === 1 ? { bite: 3, tail: 2, roots: 2 }
+      : ph === 2 ? { bite: 2, tail: 2, roots: 1, gale: 2, venom: 2 }
+      : { bite: 2, tail: 1, gale: 1, venom: 2, quake: 2 };
+    if (ph >= 2 && !this.alive('enemy').some((e) => !e.boss) && b.turns - b.lastSummon >= 4) pool.summon = 3;
+    let r = Math.random() * Object.values(pool).reduce((a, x) => a + x, 0);
+    for (const [k, w] of Object.entries(pool)) { r -= w; if (r <= 0) return k; }
+    return 'bite';
+  }
+
+  /** A boss elemi mozdulatai közben az alap-animáció szünetel (ne harcoljanak a tweenek). */
+  async #bossAct(b, fn) {
+    b.bossTweens?.forEach((t) => t.pause());
+    try { await fn(); } finally { if (b.alive) b.bossTweens?.forEach((t) => t.resume()); }
+  }
+
+  /** Egy mozdulat sebzése és mellékhatásai a célpontokon. */
+  async #bossHit(b, targets, mv, opts = {}) {
+    const { hud } = this.g;
+    for (const f of targets) {
+      if (!f.alive) continue;
+      const r = await this.#strike(b, f, mv.mult, { quick: targets.length > 1, ...opts });
+      if (!r || !f.alive) continue;
+      const notes = [];
+      if (mv.poison) { f.status.poison = Math.max(f.status.poison, mv.poison); notes.push('megmérgeződött'); }
+      if (mv.burn && !f.stats.traits.has('fireblood')) { f.status.burn = Math.max(f.status.burn, mv.burn); notes.push('lángra kapott'); }
+      if (mv.slow) { f.status.slow = Math.max(f.status.slow, mv.slow); notes.push('lelassult'); }
+      if (mv.stun && Math.random() < mv.stun) { f.status.stun = 1; notes.push('elkábult'); }
+      if (notes.length) hud.battleLog(`<b>${esc(f.d.nev)}</b> ${notes.join(', ')}.`);
+      this.#updateBar(f);
+    }
+  }
+
+  async #bossMove(b, key) {
+    const { hud, sfx } = this.g;
+    const allies = this.alive('ally');
+    const p = b.parts;
+    const mv = BOSS.moves[key];
+    if (mv) {
+      hud.battleLog(`<b>Níðhöggr</b>: <span class="bl-tech" style="color:#c28cff">ᚾ ${esc(mv.name)}</span>`);
+      await this.#skillName(b, { rune: 'ᚾ', name: mv.name, color: 0xc28cff });
+    }
+    const weakest = allies.reduce((a, x) => (a.hp / a.stats.maxHp < x.hp / x.stats.maxHp ? a : x));
+    const target = Math.random() < 0.55 ? weakest : pick(allies);
+
+    switch (key) {
+      case 'bite': await this.#bossAct(b, async () => {
+        const k = p.k * b.view.scaleX;
+        const m = this.#mouth(b), c = this.#center(target);
+        const home = { x: p.head.x, y: p.head.y };
+        sfx.roar();
+        await this.#tween({ targets: p.jaw, rotation: -0.65, duration: 240, ease: 'Quad.easeOut' });
+        await this.#tween({ targets: p.head, x: home.x + (c.x - m.x) / k * 0.75, y: home.y + (c.y - m.y) / k * 0.75, rotation: -0.15, duration: 190, ease: 'Quad.easeIn' });
+        this.tweens.add({ targets: p.jaw, rotation: 0.05, duration: 80 });
+        this.cameras.main.shake(220, 0.012);
+        await this.#bossHit(b, [target], mv, { heavy: true });
+        await this.#tween({ targets: p.head, x: home.x, y: home.y, rotation: 0, duration: 420, ease: 'Cubic.easeOut' });
+      }); break;
+
+      case 'tail': await this.#bossAct(b, async () => {
+        sfx.whoosh(0.5);
+        await this.#tween({ targets: p.tail, rotation: 0.35, duration: 260, ease: 'Quad.easeOut' });
+        this.tweens.add({ targets: p.tail, rotation: -0.25, duration: 160, yoyo: true, ease: 'Quad.easeIn' });
+        // lökéshullám a talajon, végig a csapaton
+        const f = this.#feet(b);
+        const wave = this.add.image(f.x, f.y, 'fx-ring').setTint(0xc28cff).setBlendMode('ADD').setScale(this.S / 128, this.S / 520).setDepth(9050);
+        this.tweens.add({ targets: wave, x: this.scale.width * 0.05, scaleX: this.S / 50, alpha: { from: 1, to: 0 }, duration: 520, ease: 'Quad.easeOut', onComplete: () => wave.destroy() });
+        sfx.boom();
+        this.cameras.main.shake(360, 0.014);
+        allies.forEach((a) => this.#dust(a, 8));
+        await this.#bossHit(b, allies, mv, { heavy: true });
+      }); break;
+
+      case 'roots':
+        sfx.root();
+        await Promise.all(allies.map((f, i) => this.#roots(f, i * 110)));
+        await this.#bossHit(b, allies, mv, { sure: true });
+        break;
+
+      case 'gale': await this.#bossAct(b, async () => {
+        sfx.gale();
+        this.tweens.add({ targets: [p.wings, p.wingFar], rotation: '-=0.35', duration: 160, yoyo: true, repeat: 2, ease: 'Sine.easeInOut' });
+        const { width: w, height: h } = this.scale;
+        const gust = this.add.particles(w, 0, 'fx-smoke', {
+          y: { min: h * 0.25, max: this.floorY + this.S * 0.4 }, speedX: { min: -900, max: -600 }, speedY: { min: -30, max: 30 },
+          lifespan: 1200, scale: { start: 0.6, end: 1.6 }, alpha: { start: 0.45, end: 0 }, tint: [0x9d6bff, 0x4a2a5a], frequency: 12, quantity: 3,
+        }).setDepth(9600);
+        await Promise.all(allies.map((f, i) => this.#whirl(f, 0xb18cff, i * 80)));
+        gust.stop();
+        this.time.delayedCall(1300, () => gust.destroy());
+        await this.#bossHit(b, allies, mv);
+      }); break;
+
+      case 'venom': await this.#bossAct(b, async () => {
+        sfx.venom(); sfx.fire();
+        this.tweens.add({ targets: p.jaw, rotation: -0.55, duration: 200, yoyo: true, hold: 600 });
+        await this.#wait(150);
+        await Promise.all(allies.map((f, i) => this.#wait(i * 90).then(() => this.#breath(b, f, [0xe8ffb0, 0x7dff6a, 0x9d6bff, 0x3a0a5a]))));
+        await this.#bossHit(b, allies, mv, { fire: true });
+      }); break;
+
+      case 'quake': await this.#bossAct(b, async () => {
+        sfx.quake();
+        await this.#tween({ targets: b.view, y: b.home.y - b.bossH * 0.08, duration: 300, ease: 'Quad.easeOut' });
+        await this.#tween({ targets: b.view, y: b.home.y, duration: 140, ease: 'Quad.easeIn' });
+        this.cameras.main.shake(900, 0.018);
+        await this.#cracks(b, allies);
+        await Promise.all(allies.map((f, i) => this.#rocks(f, i * 120)));
+        await this.#bossHit(b, allies, mv, { heavy: true });
+      }); break;
+
+      case 'charge': {
+        b.charging = true;
+        b.lastCharge = b.turns;
+        hud.battleLog('<span class="bl-crit">⚠ Níðhöggr mély lélegzetet vesz…</span> A következő lépése a <b>Világvég-lehelet</b>: <b>védekezz</b>, vagy <b>törd meg</b>!');
+        sfx.portal();
+        p.maw.setAlpha(0.2);
+        b.chargeTween = this.tweens.add({ targets: p.maw, alpha: { from: 0.4, to: 1 }, scaleX: { from: 2.2, to: 3.4 }, duration: 500, yoyo: true, repeat: -1 });
+        const m = this.#mouth(b);
+        b.chargeFx = this.add.particles(m.x, m.y, 'fx-dot', {
+          emitZone: { type: 'edge', source: new Phaser.Geom.Circle(0, 0, b.bossH * 0.35), quantity: 30 },
+          moveToX: m.x, moveToY: m.y, lifespan: 600, scale: { start: 0.4, end: 0.05 },
+          tint: [0xffb347, 0xff6a1f, 0xc28cff], blendMode: 'ADD', frequency: 30, quantity: 2,
+        }).setDepth(9100);
+        this.#updateBar(b);
+        await this.#banner('⚠ MÉLY LÉLEGZET', 'védekezz — vagy törd meg, mielőtt kifújja');
+        break;
+      }
+
+      case 'summon': {
+        b.lastSummon = b.turns;
+        sfx.root();
+        hud.battleLog('<b>Níðhöggr</b> a gyökerekhez szól…');
+        await this.#bossSummon(b);
+        break;
+      }
+    }
+  }
+
+  #stopCharge(b) {
+    b.chargeTween?.stop();
+    b.chargeFx?.stop();
+    const fx = b.chargeFx;
+    if (fx) this.time.delayedCall(700, () => fx.destroy());
+    b.chargeTween = b.chargeFx = null;
+    this.tweens.add({ targets: b.parts.maw, alpha: 0, duration: 300 });
+    this.#updateBar(b);
+  }
+
+  /** A Világvég-lehelet: tűzfolyam söpör végig a csapaton. */
+  async #bossBreath(b) {
+    const { hud, sfx } = this.g;
+    const mv = BOSS.moves.breath;
+    b.charging = false;
+    this.#stopCharge(b);
+    const allies = this.alive('ally');
+    hud.battleLog(`<b>Níðhöggr</b>: <span class="bl-crit">ᚲ ${esc(mv.name)}!</span>`);
+    hud.cinematic(true);
+    await this.#bossAct(b, async () => {
+      const p = b.parts;
+      sfx.roar();
+      await this.#tween({ targets: p.jaw, rotation: -0.8, duration: 300, ease: 'Quad.easeOut' });
+      sfx.fire(); sfx.meteor();
+      this.cameras.main.flash(300, 255, 170, 80);
+      this.cameras.main.shake(1300, 0.014);
+      // Két hullámban söpör végig: minden sárkányra külön lángcsóva
+      const tints = [0xfff3a0, 0xffb347, 0xff6a1f, 0xc04dff];
+      for (let wave = 0; wave < 2; wave++) {
+        await Promise.all(allies.map((f, i) => this.#wait(i * 120).then(() => this.#breath(b, f, tints))));
+      }
+      this.tweens.add({ targets: p.jaw, rotation: 0, duration: 400 });
+      // A lehelet az életerő arányában éget: védekezve 30%, anélkül 90% (a pajzsfal ebből is levesz)
+      const defended = allies.filter((f) => f.defending).length;
+      if (defended) hud.battleLog(`🛡 ${defended === allies.length ? 'Mindenki' : `${defended} sárkány`} védekezett: csak <b>${Math.round(mv.guarded * 100)}%</b> sebzés.`);
+      for (const f of allies) {
+        if (!f.alive) continue;
+        const dmg = Math.round(f.stats.maxHp * (f.defending ? mv.guarded : mv.hit) * (f.status.ward > 0 ? 0.7 : 1));
+        await this.#damage(f, dmg, false, '#ffb347', { heavy: true, quick: true, big: true });
+        if (f.alive && !f.stats.traits.has('fireblood')) { f.status.burn = Math.max(f.status.burn, mv.burn); this.#updateBar(f); }
+      }
+    });
     hud.cinematic(false);
+  }
+
+  /** Csatlós a szabad helyre (a boss mellett, előtte). */
+  async #bossSummon(b) {
+    const { hud, state } = this.g;
+    const used = new Set(this.alive('enemy').map((e) => e.slot));
+    const slot = [1, 2].find((i) => !used.has(i));
+    if (slot === undefined) return;
+    const raw = makeWild(4, 2, state.tiers);
+    Object.assign(raw, { nev: 'Gyökérfattyú', szin: '#5a3a6b', tech: [], minion: true });
+    const m = await this.#makeUnit(withTotals(raw, state.catalog), 'enemy', slot);
+    this.#updateBar(m);
+    hud.battleLog('A gyökerek közül egy <b>Gyökérfattyú</b> mászik elő!');
+  }
+
+  /** Fázisváltás (66% és 33%): mozis jelenet, a barlang átváltozik, a boss erősödik. */
+  async #bossPhase(b) {
+    this.pendingPhase = null;
+    if (!b.alive) return;
+    const target = bossPhase(b.hp, b.stats.maxHp);
+    const { hud, sfx, story } = this.g;
+    const { width: w, height: h } = this.scale;
+    while (b.phase < target && b.alive) {
+      b.phase++;
+      hud.cinematic(true);
+      const c = this.#center(b);
+      await this.#camTo(c.x, c.y, 1.12, 500);
+      sfx.roar();
+      this.cameras.main.shake(900, 0.018);
+      const lines = story?.battleLines(b.phase === 2 ? 'nidhoggrRage' : 'nidhoggrWrath', this.tier);
+      if (lines) await story.dialogue.play(lines);
+      b.stats.atk = Math.round(b.stats.atk * 1.1);
+      this.#glow(b, b.phase === 2 ? 0x9d6bff : 0xff3d5a, 1400);
+
+      if (b.phase === 2) {
+        // A barlang lila fénybe borul, a peremen gyökerek kúsznak elő
+        this.rageTint = this.add.rectangle(w / 2, h / 2, w * 2, h * 2, 0x3a1060, 1).setAlpha(0).setDepth(-3).setBlendMode('MULTIPLY');
+        this.tweens.add({ targets: this.rageTint, alpha: 0.55, duration: 900 });
+        const edge = this.add.graphics().setDepth(-2).setAlpha(0);
+        for (let i = 0; i < 9; i++) {
+          const fromLeft = i % 2 === 0;
+          const x0 = fromLeft ? -10 : w + 10, y0 = h * (0.15 + Math.random() * 0.8);
+          const x1 = fromLeft ? w * (0.08 + Math.random() * 0.1) : w * (0.82 + Math.random() * 0.1), y1 = y0 + (Math.random() - 0.5) * 160;
+          edge.lineStyle(14, 0x1a0b22, 1).beginPath().moveTo(x0, y0).lineTo((x0 + x1) / 2, y0 - 40).lineTo(x1, y1).strokePath();
+          edge.lineStyle(3, 0x9d6bff, 0.6).beginPath().moveTo(x0, y0).lineTo((x0 + x1) / 2, y0 - 40).lineTo(x1, y1).strokePath();
+        }
+        this.tweens.add({ targets: edge, alpha: 1, duration: 1200 });
+        await this.#banner('II. — A GYÖKÉR DÜHE', 'Níðhöggr csatlóst hív, és szárnyra kap');
+        await this.#camReset(400);
+        b.lastSummon = b.turns;
+        await this.#bossSummon(b);
+      } else {
+        // Világvég: vörös ég, hulló kövek, a boss körönként kétszer lép
+        this.wrathTint = this.add.rectangle(w / 2, h / 2, w * 2, h * 2, 0x5a0a14, 1).setAlpha(0).setDepth(-3).setBlendMode('MULTIPLY');
+        this.tweens.add({ targets: this.wrathTint, alpha: 0.6, duration: 900 });
+        this.atmo.push(this.add.particles(0, -20, 'fx-shard', {
+          x: { min: 0, max: w }, lifespan: 1800, speedY: { min: 260, max: 520 }, rotate: { min: 0, max: 360 },
+          scale: { min: 0.5, max: 1.2 }, tint: [0x4a3a3a, 0x6a5040, 0xff7a3d], frequency: 120, quantity: 1,
+        }).setDepth(9500));
+        this.atmo.push(this.add.particles(0, h, 'fx-dot', {
+          x: { min: 0, max: w }, lifespan: 2600, speedY: { min: -120, max: -40 }, speedX: { min: -20, max: 20 },
+          scale: { start: 0.2, end: 0 }, tint: [0xff6a1f, 0xffc46b], blendMode: 'ADD', frequency: 50, quantity: 1,
+        }).setDepth(9500));
+        await this.#banner('III. — VILÁGVÉG', 'Níðhöggr minden körben kétszer lép');
+        await this.#camReset(400);
+        b.lastCharge = b.turns - 2;                     // hamarosan újra lélegzetet vesz
+      }
+      hud.cinematic(false);
+      this.#updateBar(b);
+    }
+  }
+
+  /** A halál: a gyökérerek kigyúlnak, fény tör ki belőle, aztán a mélybe süllyed. */
+  async #bossDeath(t) {
+    const { sfx, hud } = this.g;
+    // A csatlósok vele pusztulnak: a gyökér elengedi őket
+    for (const m of this.alive('enemy')) {
+      m.alive = false; m.hp = 0;
+      this.defeated.push(m);
+      m.bob?.stop(); m.breath?.stop();
+      for (const k of Object.keys(m.status)) m.status[k] = 0;
+      this.#killAllFx(m);
+      m.zone.disableInteractive();
+      hud.battleLog(`<b>${esc(m.d.nev)}</b> porrá omlik.`);
+      this.#parts(m).forEach((i) => i.setTintFill(0x9d6bff));
+      this.tweens.add({ targets: [m.view, m.ui, m.shadow], alpha: 0, duration: 900, onComplete: () => {
+        m.view.destroy(); m.ui.destroy(); m.shadow.destroy(); m.ring.destroy(); m.zone.destroy();
+        this.units = this.units.filter((x) => x !== m);
+      } });
+    }
+    this.#stopCharge(t);
+    const c = this.#center(t);
+    this.g.hud.cinematic(true);
+    this.#camTo(c.x, c.y, 1.15, 500);
+    sfx.roar();
+    this.tweens.add({ targets: t.parts.jaw, rotation: -0.9, duration: 500 });
+    this.tweens.add({ targets: t.parts.head, rotation: 0.35, duration: 900, ease: 'Quad.easeOut' });
+    this.cameras.main.shake(2200, 0.014);
+    const rays = [];
+    for (let i = 0; i < 7; i++) {
+      const r = this.add.image(c.x, c.y, 'fx-shaft').setOrigin(0.5, 1).setTint(i % 2 ? 0xffd36b : 0xc28cff).setBlendMode('ADD')
+        .setDisplaySize(t.bossH * 0.12, t.bossH * 1.4).setRotation((i / 7) * Math.PI * 2).setAlpha(0).setDepth(9300);
+      this.tweens.add({ targets: r, alpha: 0.75, duration: 300, delay: i * 120 });
+      rays.push(r);
+    }
+    this.tweens.add({ targets: rays, angle: '+=40', duration: 2000 });
+    await this.#wait(1500);
+    sfx.boom();
+    this.cameras.main.flash(600, 255, 240, 220);
+    this.tweens.add({ targets: rays, alpha: 0, duration: 700, onComplete: () => rays.forEach((r) => r.destroy()) });
+    this.g.hud.cinematic(false);
   }
 
   /**
@@ -1790,6 +2196,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (u.side === 'ally') this.#gainChorus(CHORUS.gain.hit + (r.crit ? CHORUS.gain.crit : 0));
     else this.#gainChorus(CHORUS.gain.hurt);
+    if (t.boss && u.side !== t.side) this.#addStagger(t, (opts.quick ? 5 : 9) + (r.crit ? 7 : 0) + (opts.heavy ? 6 : 0));
     await this.#damage(t, r.amount, r.crit, null, opts);
     // Tüskepáncél: a támadó visszakapja a sebzés egy részét
     if (t.status.thorns > 0 && u.alive && u.side !== t.side) {
@@ -1814,7 +2221,7 @@ export class BattleScene extends Phaser.Scene {
     const push = (t.side === 'ally' ? -1 : 1) * (opts.heavy || crit ? 26 : 12);
     this.tweens.add({ targets: t.view, x: t.home.x + push, duration: 70, yoyo: true, repeat: opts.heavy ? 0 : 1, ease: 'Quad.easeOut' });
     this.#updateBar(t);
-    if (t.boss && !this.bossRaged && t.hp > 0 && t.hp < t.stats.maxHp * 0.5) this.pendingRage = t;
+    if (t.boss && t.hp > 0 && bossPhase(t.hp, t.stats.maxHp) > t.phase) this.pendingPhase = t;
     await this.#wait(opts.quick ? 180 : 420);
     if (t.hp <= 0 && t.alive) await this.#faint(t);
   }
@@ -1826,6 +2233,8 @@ export class BattleScene extends Phaser.Scene {
     hud.battleLog(`<b>${esc(t.d.nev)}</b> ${t.side === 'ally' ? 'elájult' : 'legyőzve'}!`);
     if (t.side === 'enemy') { this.defeated.push(t); this.#gainChorus(CHORUS.gain.ko); }
     t.bob?.stop(); t.breath?.stop();
+    t.bossTweens?.forEach((tw) => tw.stop());
+    if (t.boss) await this.#bossDeath(t);
     this.tweens.killTweensOf([t.parts.wings, t.parts.head].filter(Boolean));
     t.zone.disableInteractive();
     for (const k of Object.keys(t.status)) t.status[k] = 0;
@@ -1854,10 +2263,9 @@ export class BattleScene extends Phaser.Scene {
       this.#parts(t).forEach((i) => i.setTintFill(0xffffff));
       t.flashing = true;
     }
-    await this.#tween({
-      targets: t.view, y: t.home.y + this.S * 0.25, alpha: 0, angle: t.side === 'ally' ? -24 : 24,
-      duration: 700, ease: 'Cubic.easeIn',
-    });
+    await this.#tween(t.boss
+      ? { targets: t.view, y: t.home.y + t.bossH * 0.45, alpha: 0, duration: 1600, ease: 'Cubic.easeIn' }
+      : { targets: t.view, y: t.home.y + this.S * 0.25, alpha: 0, angle: t.side === 'ally' ? -24 : 24, duration: 700, ease: 'Cubic.easeIn' });
     this.tweens.add({ targets: [t.ui, t.shadow], alpha: 0, duration: 300 });
     if (finale) {
       this.tweens.timeScale = 1;
@@ -1903,16 +2311,17 @@ export class BattleScene extends Phaser.Scene {
   /* ================================================================== */
   /** A száj helye a világban (a rajzon kb. 8,30 a 64-es rácson). */
   #mouth(u) {
+    if (u.boss) return bossMouth(u.view);
     const S = this.S;
     const flip = u.parts.inner.scaleX < 0 ? -1 : 1;
     return { x: u.view.x + (8 / 64 - 0.5) * S * flip, y: u.view.y + (30 / 64 - 0.5) * S + u.parts.inner.y };
   }
-  #center(u) { return { x: u.view.x, y: u.view.y + this.S * 0.05 }; }
-  #feet(u) { return { x: u.view.x, y: u.view.y + this.S * 0.4 }; }
+  #center(u) { return u.boss ? { x: u.view.x - u.bossH * 0.12, y: u.view.y - u.bossH * 0.42 } : { x: u.view.x, y: u.view.y + this.S * 0.05 }; }
+  #feet(u) { return u.boss ? { x: u.view.x - u.bossH * 0.1, y: u.view.y } : { x: u.view.x, y: u.view.y + this.S * 0.4 }; }
 
   /** Utókép: a sárkány áttetsző, színes másolata, ami elhalványul. */
   #ghost(u, tint = 0xffffff, alpha = 0.45) {
-    if (!u.view.scene) return;
+    if (!u.view.scene || u.boss) return;
     const p = u.parts;
     const c = this.add.container(u.view.x, u.view.y).setDepth(u.view.depth - 0.5);
     const inner = this.add.container(p.inner.x, p.inner.y).setScale(p.inner.scaleX, p.inner.scaleY);
@@ -1926,8 +2335,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   async #lunge(u, t, reach = 0.35, dur = 150, trail = false) {
-    const dx = (t.home.x - u.home.x) * reach;
-    if (u.parts.head) this.tweens.add({ targets: u.parts.head, rotation: -0.35, duration: dur, yoyo: true });
+    const dx = (t.home.x - u.home.x) * reach * (u.boss ? 0.3 : 1);
+    if (u.parts.head && !u.boss) this.tweens.add({ targets: u.parts.head, rotation: -0.35, duration: dur, yoyo: true });
     let last = 0;
     const col = colorOf(u.d);
     await this.#tween({
@@ -1999,6 +2408,15 @@ export class BattleScene extends Phaser.Scene {
   /** Színes felizzás (erősítés, kórus, düh): a sárkány színes mása rajta, ami elhalványul — vele mozog. */
   #glow(u, color, dur = 500) {
     if (!u.view.scene) return;
+    if (u.boss) {
+      // A boss rétegzett: másolat helyett színes felvillanás és fénykör
+      const c = this.#center(u);
+      this.#parts(u).forEach((i) => i.setTint(color));
+      this.time.delayedCall(dur * 0.6, () => { if (u.alive) this.#applyTint(u); });
+      const halo = this.add.image(c.x, c.y, 'fx-dot').setTint(color).setBlendMode('ADD').setScale(u.bossH / 18).setAlpha(0.6).setDepth(u.view.depth - 1);
+      this.tweens.add({ targets: halo, scale: u.bossH / 9, alpha: 0, duration: dur, onComplete: () => halo.destroy() });
+      return;
+    }
     const p = u.parts;
     const over = this.add.container(p.inner.x, p.inner.y).setScale(p.inner.scaleX, p.inner.scaleY);
     for (const part of this.#parts(u)) {

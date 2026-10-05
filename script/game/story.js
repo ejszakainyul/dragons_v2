@@ -102,6 +102,10 @@ export const SCRIPTS = {
   nidhoggrRage: [
     L('nidhoggr', '<b>ELÉG!</b> <em>A gyökér velem van — és a gyökér mindent elér!</em>'),
   ],
+  nidhoggrWrath: [
+    L('nidhoggr', '<em>Érzed? A Világfa remeg. Ha nekem pusztulnom kell…</em>'),
+    L('nidhoggr', '<b>…HÁT VELEM PUSZTUL A VÖLGY IS!</b>'),
+  ],
   nidhoggrFall: [
     L('nidhoggr', '<em>…a szikra… nem alszik ki…</em>'),
     L('nidhoggr', '<em>Visszatérek a mélybe. Aludni. Álmodni. De a gyökér emlékezni fog rád, viking…</em>'),
@@ -294,11 +298,12 @@ export class Story {
       whisper:      q?.id === 'cave3' && tier === 3,
       nidhoggr:     q?.id === 'cave5' && tier === 5,
       nidhoggrRage: tier === 5,
+      nidhoggrWrath: tier === 5,
       nidhoggrFall: q?.id === 'cave5' && tier === 5,
     }[kind];
     if (!when) return null;
-    // A dühkitörés minden csatában jár, a többi csak egyszer
-    if (kind !== 'nidhoggrRage') {
+    // A dühkitörések minden csatában járnak, a többi csak egyszer
+    if (kind !== 'nidhoggrRage' && kind !== 'nidhoggrWrath') {
       if (this.s.seen[kind]) return null;
       this.s.seen[kind] = 1;
     }

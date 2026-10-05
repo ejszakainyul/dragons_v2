@@ -324,7 +324,7 @@ export function deriveStats(d, catalog, extra = {}) {
   // vadak) — különben egy friss kezdő sárkány az első barlangban elvérzik.
   const WILD = { 1: 0.6, 2: 0.68, 3: 0.74, 4: 0.64, 5: 0.64 };
   const wild = d.wild && !extra.boss ? WILD[d.tier] || 1 : 1;
-  const bossMul = extra.boss ? { hp: 1.9, atk: 1.05 } : { hp: wild, atk: wild };
+  const bossMul = extra.boss ? { hp: BOSS.hpMul, atk: BOSS.atkMul } : { hp: wild, atk: wild };
 
   return {
     maxHp: Math.round(Math.max(30, d.hp || 0) * 1.2 * hpMul * growth * bossMul.hp),
@@ -362,12 +362,40 @@ export function rollDamage(att, tgt, mult, opts = {}) {
   if (has(att, 'atkUp')) dmg *= 1.25;
   if (has(tgt, 'ward'))  dmg *= 0.7;
   if (has(tgt, 'mark'))  dmg *= 1.3;
+  if (has(tgt, 'broken')) dmg *= BOSS.brokenMul;
   if (tgt.defending) dmg *= 0.5;
 
   const crit = opts.forceCrit || has(att, 'shadow') || rng() < att.stats.crit;
   if (crit) dmg *= 1.6;
   return { amount: Math.max(1, Math.round(dmg)), crit, miss: false };
 }
+
+/* --- Níðhöggr, a végső ellenfél (battle.js: #bossTurn, boss.js: a rajza) ---
+   Egyedül érkezik az utolsó hullámban, három fázisban harcol (a 66% és a
+   33% életerőnél vált), a harmadikban körönként kétszer lép. Időnként
+   „mély lélegzetet vesz": a következő lépése a Világvég-lehelet, ami a
+   teljes életerő 90%-át viszi el — védekezve csak 30%-ot —, hacsak meg nem
+   törik előbb. A találatok a MEGTÖRÉS sávot töltik; ha megtelik,
+   megtántorodik (kimarad), és két körig +40% sebzést kap. A kábítást és
+   fagyasztást lerázza, de az is töri.
+   Szimulációval hangolva (edzéssel, ereklyékkel, kórussal számolva):
+   20. szinten ~50%, 24. szinten ~80% győzelem; a technikák ezen javítanak. */
+export const BOSS = {
+  hpMul: 2.0, atkMul: 0.72,
+  phases: [0.66, 0.33],
+  staggerMax: 80,
+  brokenMul: 1.4,
+  moves: {
+    bite:   { name: 'Gyökértépő harapás', mult: 1.45 },
+    tail:   { name: 'Farokcsapás',        mult: 0.7 },
+    roots:  { name: 'Gyökérrontás',       mult: 0.6, poison: 3 },
+    gale:   { name: 'Éjszárny-vihar',     mult: 0.5, slow: 2 },
+    venom:  { name: 'Méregláng',          mult: 0.65, poison: 2, burn: 2 },
+    quake:  { name: 'Világfa-rengés',     mult: 0.75, stun: 0.2 },
+    breath: { name: 'Világvég-lehelet',   hit: 0.9, guarded: 0.3, burn: 3 },
+  },
+};
+export const bossPhase = (hp, max) => (hp > max * BOSS.phases[0] ? 1 : hp > max * BOSS.phases[1] ? 2 : 3);
 
 /** Energia: támadás és védekezés +1, a különleges képesség 2-be kerül. */
 export const MAX_ENERGY = 3;
@@ -382,7 +410,7 @@ export const CAVES = {
   2: { name: 'Fagyott Torok',     color: 0x7ce7ff, palette: ['#8fd3ff', '#b9e6ff', '#6fa8ff', '#d9f2ff'], waves: [1, 2, 2] },
   3: { name: 'Suttogó Mélység',   color: 0xb18cff, palette: ['#9d7bff', '#c28cff', '#6f6bd8', '#e08cff'], waves: [2, 2, 3] },
   4: { name: 'Hamuverem',         color: 0xff7a3d, palette: ['#ff6a3d', '#ff9a3d', '#d94a2a', '#ffc46b'], waves: [2, 3, 3] },
-  5: { name: 'Níðhöggr Gyökere',  color: 0xffd36b, palette: ['#3a2a55', '#55304a', '#2a3a55'],            waves: [2, 2, 2] },
+  5: { name: 'Níðhöggr Gyökere',  color: 0xffd36b, palette: ['#3a2a55', '#55304a', '#2a3a55'],            waves: [2, 2, 1] },
 };
 
 const NAME_A = ['Moha', 'Hamu', 'Jég', 'Kő', 'Vihar', 'Árny', 'Rozsda', 'Szirt', 'Köd', 'Parázs', 'Fagy', 'Tövis', 'Csont', 'Éj'];

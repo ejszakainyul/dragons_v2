@@ -336,8 +336,19 @@ ajánlott szintű csapat a II–IV. fokon 90/90/71%, Níðhöggr 20. szint kör�
   barlangok szabják meg az erejüket), útjelző táblák, a kalmár boltja (gyógyfű,
   mézsör, térkép-töredék), a skald ihletése, birkák, hollók, felhőárnyékok.
 - **Csata:** állapotok látszanak a sárkányon (lángok, jég, csillagok, pajzsbuborék…),
-  mozis kamera a nagy technikáknál, ütésmegállás, lassított utolsó csapás, utóképek;
-  Níðhöggr a fele életerejénél dühbe gurul és csatlóst hív.
+  mozis kamera a nagy technikáknál, ütésmegállás, lassított utolsó csapás, utóképek.
+- **Níðhöggr, a végső ellenfél** (`boss.js` + `battle.js`): nem testrészekből áll,
+  hanem saját, kódból rajzolt óriás (kb. kétszer akkora, mint egy sárkány):
+  szegmentált nyak, szarvkorona, három pár izzó szem, nyíló állkapocs, tépett
+  szárnyak, tüskés farok, izzó gyökérerek. Egyedül jön az V. barlang utolsó
+  hullámában, és **három fázisban** harcol (66% és 33% életerőnél vált):
+  saját mozdulatai vannak (harapás, farokcsapás, gyökérrontás, szárnyvihar,
+  méregláng, rengés), a 2. fázisban csatlóst hív, a 3.-ban körönként kétszer
+  lép. Ha **mély lélegzetet vesz**, a következő lépése a Világvég-lehelet
+  (az életerő 90%-a — védekezve csak 30%). A találatok a **megtörés**-sávot
+  töltik: ha megtelik, megtántorodik, két körig +40% sebzést kap, és a
+  feltöltött lehelete elvész. A kábítást lerázza, de az is töri.
+  Számok: `BOSS` a `rules.js`-ben (szimulációval hangolva).
 
 Minden új állapot a mentett játékállás JSON-jában van (`story`, `learned`, `train`,
 `ultis`, `relics`, `techSrc`, `places`) — szerveroldali változás nem kellett, mert
