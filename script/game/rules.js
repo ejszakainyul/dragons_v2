@@ -410,7 +410,7 @@ export const CAVES = {
   2: { name: 'Fagyott Torok',     color: 0x7ce7ff, palette: ['#8fd3ff', '#b9e6ff', '#6fa8ff', '#d9f2ff'], waves: [1, 2, 2] },
   3: { name: 'Suttogó Mélység',   color: 0xb18cff, palette: ['#9d7bff', '#c28cff', '#6f6bd8', '#e08cff'], waves: [2, 2, 3] },
   4: { name: 'Hamuverem',         color: 0xff7a3d, palette: ['#ff6a3d', '#ff9a3d', '#d94a2a', '#ffc46b'], waves: [2, 3, 3] },
-  5: { name: 'Níðhöggr Gyökere',  color: 0xffd36b, palette: ['#3a2a55', '#55304a', '#2a3a55'],            waves: [2, 2, 1] },
+  5: { name: 'Níðhöggr Gyökere',  color: 0xffd36b, palette: ['#3a2a55', '#55304a', '#2a3a55'],            waves: [1] },        // egyből a boss
 };
 
 const NAME_A = ['Moha', 'Hamu', 'Jég', 'Kő', 'Vihar', 'Árny', 'Rozsda', 'Szirt', 'Köd', 'Parázs', 'Fagy', 'Tövis', 'Csont', 'Éj'];
@@ -446,7 +446,7 @@ export function makeSparring(level, tiers, i, rng = Math.random) {
 
 /** A barlang egy lakója. A boss (5. fok utolsó hulláma) Níðhöggr maga. */
 export function makeWild(tier, wave, tiers, rng = Math.random, boss = false) {
-  const level = Math.min(MAX_LEVEL, 1 + (tier - 1) * 4 + wave + (boss ? 1 : 0) + Math.floor(rng() * 2));
+  const level = Math.min(MAX_LEVEL, 1 + (tier - 1) * 4 + (boss ? 3 : wave) + Math.floor(rng() * 2));
   if (boss) {
     return {
       id: `wild-boss`, wild: true, boss: true, tier,

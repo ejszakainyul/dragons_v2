@@ -260,8 +260,9 @@ php tools/build_realm.php
 ## A Sárkányok Völgye — kalandjáték (`kaland.php`)
 
 Bejárható völgy (Phaser 3.90, `vendor/phaser/`), amin a csapat vezérsárkánya a
-játékos. **Barlangok** (I–V. fok, 3 hullám, a végén Níðhöggr): körökre osztott
-harc. **Fészkek**: két saját sárkányból tojás — testrészenként dönthető, kitől
+játékos. **Barlangok** (I–IV. fok, 3 hullám; sorban nyílnak): körökre osztott
+harc. Az **V. barlang** Níðhöggr fészke: mindig nyitva, egyből a boss jön, és
+bármikor — akár többször is — legyőzhető. **Fészkek**: két saját sárkányból tojás — testrészenként dönthető, kitől
 örököl a fióka, a „Sors" 18% eséllyel új testrészt hoz. **Hosszúház**: pihenés,
 csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe kerülnek
 (profil, aréna).
@@ -273,7 +274,8 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/overworld.js` | a völgy: mozgás, köd, helyszínek, tenyésztés |
 | `script/game/battle.js` | a csata (hullámok, képességek, jutalmak) |
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
-| `script/game/art.js` | minden grafika kódból (csempék, épületek, effektek) |
+| `script/game/art.js` | minden grafika kódból (épületek, helyszínek, effektek, sárkánynézet) |
+| `script/game/skins.js` | a sárkányok egyedi kinézete: fajta, minta, tüskesor, szarvak, farokvég |
 | `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
 | `script/game/terrain.js` | árnyalt hegycsúcsok a hegyvidékben (egy textúralapon) |
 | `script/game/hud.js`, `state.js`, `sfx.js`, `path.js`, `lore.js` | felület, mentés, hangok, A*, rúnakövek |
@@ -306,6 +308,21 @@ szomszéd anyaga hullámos, puha széllel, enyhe árnyékkal lóg át (hó a fű
 fű az ösvényre…). A partokon homok, nedves sáv, hab és sekély víz, lekerekített
 sarkokkal. A fák és sziklák árnyéka a képükbe van rajzolva; a hegyvidékben
 árnyalt, havas csúcsok (`terrain.js`).
+
+**Helyszínek:** a hosszúház (csónakgerinc-ívű zsindelytető mohával, sárkányfejes
+oromdeszkák, festett pajzsok, lámpások), a kunyhó, a kovácsműhely, a barlang,
+a fészek, a rúnakő, a jégtrón, a Muspell-oltár, a Valkűr-kő, a stég, a ládák és
+a menhírek mind anyag-segédekkel készülnek (erezett deszka, faragott kő, moha,
+talajárnyék), utána egy közös simítás ad nekik peremfényt és árnyékoldalt.
+
+**Egyedi sárkányok** (`skins.js`): a testrészek mellett minden sárkány a
+nevéből és a részeiből (determinisztikusan) kap egy *fajtát*: testalkat
+(kígyószerű, nyúlánk, zömök, csontos, ívelt), kéttónusú szín hasoldallal, minta
+(csíkok, sávok, foltok, rozetták, pikkelyek, pettyek, rúnák), hátsor (lángok,
+kristályok, vitorla, füstfoszlányok, lemezek, tövisek, tüskék, moha), 0–2 pár
+szarv, fejdísz (taréj, gallér, bajusz, orrszarv), farokvég (buzogány, penge,
+legyező, kristály, láng, fullánk…) — ritkán egy második szárnypár is. A fajta
+neve a sárkány kártyáján olvasható (pl. „Pettyes parázshátú kígyósárkány").
 
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös

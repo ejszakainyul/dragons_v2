@@ -1207,7 +1207,8 @@ export class OverworldScene extends Phaser.Scene {
     const cave = CAVES[p.tier];
     const cleared = !!state.save.cleared[p.tier];
     const maxCleared = Math.max(0, ...Object.keys(state.save.cleared).filter((k) => state.save.cleared[k]).map(Number));
-    const locked = p.tier > maxCleared + 1;
+    // Níðhöggr barlangja bármikor nyitva: aki bemegy, egyből a bosszal néz szembe
+    const locked = p.tier !== 5 && p.tier > maxCleared + 1;
     const partyUp = state.party.filter((d) => state.hpOf(d) > 0);
     const rec = p.tier === 5 ? 20 : 1 + (p.tier - 1) * 4;     // Níðhöggr ellen több kell (szimuláció: 17. szinten ~22% esély)
     const lore = {
@@ -1224,7 +1225,7 @@ export class OverworldScene extends Phaser.Scene {
       <p class="gm-lore">${lore}</p>
       <div class="gm-facts">
         <span>Ajánlott szint: <b>${rec}+</b></span>
-        <span>Hullámok: <b>${cave.waves.length}</b></span>
+        <span>${p.tier === 5 ? 'Ellenfél: <b>Níðhöggr</b>' : `Hullámok: <b>${cave.waves.length}</b>`}</span>
         <span>Állapot: <b>${cleared ? 'bejárva ✓' : 'felderítetlen'}</b></span>
       </div>
       ${locked ? `<p class="gm-warn">Ez a barlang még túl veszélyes. Előbb járd be a(z) ${ROMAN[maxCleared + 1]}. fokút.</p>` : ''}

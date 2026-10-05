@@ -9,6 +9,7 @@ import {
   SKILLS, SLOTS, SLOT_NAMES, TECHNIQUES, TRAIN, CHORUS, ULTIMATES, RELICS, levelOf, xpForLevel, MAX_ENERGY, SKILL_COST,
   COMBOS, COMBO_COST, ELEMENTS,
 } from './rules.js';
+import { dragonLook } from './skins.js';
 import { B } from './world.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -302,6 +303,7 @@ export class Hud {
         <div class="gd-info">
           <b>${esc(d.nev)}</b>
           <small>${s.level}. szint${d.gen ? ` · ${d.gen}. nemzedék` : ''}</small>
+          <small class="gd-species">${esc(dragonLook(d, st.catalog).species)}</small>
           <div class="gd-stats">
             <span title="Életerő">❤ ${hp}/${s.maxHp}</span>
             <span title="Sebzés">⚔ ${s.atk}</span>
