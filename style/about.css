@@ -1,0 +1,113 @@
+/* =====================================================================
+   Rólunk oldal
+   ===================================================================== */
+
+.tint-def { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+.about-wrap { max-width: 1000px; }
+
+.about-card { margin-bottom: 26px; padding: 34px 38px; }
+.about-card:hover { transform: none; }
+.about-card h2 { margin-bottom: 12px; }
+
+.about-block { display: flex; flex-direction: column; }
+.about-icon { font-size: 1.9rem; margin-bottom: 10px; }
+.about-block h3 { margin-bottom: 14px; }
+
+.feature-list { list-style: none; padding: 0; margin: 0; }
+.feature-list li {
+  position: relative;
+  padding-left: 26px;
+  margin-bottom: 11px;
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.6;
+}
+.feature-list li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  top: .15em;
+  color: var(--accent);
+  font-size: .68rem;
+}
+
+/* --- Rétegdemó ------------------------------------------------------ */
+.layer-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 24px;
+  border-radius: var(--r-lg);
+  background: rgba(8, 13, 26, .55);
+  border: 1px solid var(--line);
+}
+
+.layer-demo figure { margin: 0; text-align: center; width: 78px; }
+.layer-demo img {
+  width: 100%;
+  /* A nagy felbontású rajzoknál a sima skálázás a jó;
+     a pixelated itt visszablokkosítaná az éleket. */
+  image-rendering: auto;
+  opacity: .85;
+}
+.layer-demo figcaption {
+  font-size: .66rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.layer-plus { color: var(--muted); font-size: 1.1rem; }
+.layer-plus:last-of-type { display: none; }
+
+.layer-result { width: 110px !important; }
+.layer-result .dragon-render { filter: drop-shadow(0 6px 18px rgba(255, 138, 61, .35)); }
+.layer-result figcaption { color: var(--accent-2); }
+
+/* --- Titkos ikon ---------------------------------------------------- */
+.secret-zone { text-align: center; padding: 40px 0 10px; }
+
+.secret-icon {
+  border: 0;
+  background: none;
+  font-size: 2.6rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .12;
+  padding: 10px;
+  transition: opacity .4s var(--ease), transform .4s var(--ease), filter .4s var(--ease);
+}
+.secret-icon:hover { opacity: .5; transform: scale(1.1); }
+
+.secret-icon.awakening {
+  opacity: 1;
+  filter: drop-shadow(0 0 22px rgba(157, 123, 255, .85));
+  animation: awaken 1.4s var(--ease);
+}
+@keyframes awaken {
+  0%   { transform: scale(1)    rotate(0deg);  }
+  35%  { transform: scale(1.45) rotate(-12deg); }
+  70%  { transform: scale(1.15) rotate(8deg);   }
+  100% { transform: scale(1.2)  rotate(0deg);   }
+}
+
+.secret-msg {
+  display: inline-block;
+  margin: 14px auto 0;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: .92rem;
+}
+.secret-msg.is-success { background: rgba(157, 123, 255, .16); border: 1px solid rgba(157,123,255,.5); color: #d5c6ff; }
+.secret-msg.is-error   { background: rgba(255, 93, 108, .12); border: 1px solid rgba(255,93,108,.4);  color: #ffc2c8; }
+
+@media (max-width: 640px) {
+  .about-card { padding: 26px 22px; }
+  .layer-demo figure { width: 58px; }
+  .layer-result { width: 84px !important; }
+}

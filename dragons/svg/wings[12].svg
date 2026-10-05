@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512"
+     shape-rendering="geometricPrecision">
+<defs>
+  <!-- Lagy tonusatmenet. Szandekosan nem megy le a legsotetebb arnyekig:
+       a kemeny sotet foltok a format nem terfogatosnak, hanem koszosnak
+       mutatjak. A melyebb arnyekot kulon retegek adjak. -->
+  <linearGradient id="w12-vol" x1="0.18" y1="0.02" x2="0.82" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.30" stop-color="#bdbdbd"/>
+    <stop offset="0.66" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <!-- Fuggoleges valtozat. Hosszukas alakzatoknal (fej, lab) a ferde
+       atmenet ugy hat, mintha sotet sapka lenne rajtuk; a felulrol jovo
+       fenyhez a fuggoleges a termeszetes. -->
+  <linearGradient id="w12-volV" x1="0.42" y1="0" x2="0.58" y2="1">
+    <stop offset="0"    stop-color="#e2e2e2"/>
+    <stop offset="0.34" stop-color="#bdbdbd"/>
+    <stop offset="0.74" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <linearGradient id="w12-vol2" x1="0.2" y1="0" x2="0.8" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.5"  stop-color="#5d5d5d"/>
+    <stop offset="1"    stop-color="#3b3b3b"/>
+  </linearGradient>
+  <!-- A membran a test fenyiranyat koveti: bal-felul vilagos. Forditva
+       (sotet tetovel) a szarny fekete folttal ult a vilagos sarkanyon. -->
+  <linearGradient id="w12-membrane" x1="0.12" y1="0" x2="0.78" y2="1">
+    <stop offset="0"    stop-color="#bdbdbd"/>
+    <stop offset="0.45" stop-color="#8f8f8f"/>
+    <stop offset="1"    stop-color="#5d5d5d"/>
+  </linearGradient>
+  <radialGradient id="w12-sheen" cx="0.34" cy="0.24" r="0.95">
+    <stop offset="0"    stop-color="#fbfbfb" stop-opacity="0.62"/>
+    <stop offset="0.38" stop-color="#fbfbfb" stop-opacity="0.22"/>
+    <stop offset="1"    stop-color="#fbfbfb" stop-opacity="0"/>
+  </radialGradient>
+
+</defs>
+<g id="w12"><path d="M36,27Q34.8,18 39.85,13.12Q40.9,19.02 46.59,20.87Q43.59,24.93 45.77,29.49Z" fill="url(#w12-membrane)" stroke="#101010" stroke-width="1.5" stroke-linejoin="round"/><defs><path id="w12-rays-s0" d="M37.34,27.53C37.5,27.15 37.67,26.56 37.86,25.85C38.04,25.14 38.22,24.19 38.44,23.27C38.65,22.34 38.93,21.29 39.17,20.31C39.4,19.32 39.66,18.27 39.84,17.36C40.01,16.44 40.12,15.51 40.19,14.82C40.27,14.12 40.29,13.5 40.3,13.19C40.31,12.88 40.3,13.02 40.27,12.95C40.24,12.89 40.19,12.81 40.13,12.77C40.07,12.72 39.99,12.69 39.91,12.68C39.84,12.67 39.75,12.68 39.68,12.71C39.61,12.74 39.54,12.79 39.5,12.85C39.45,12.91 39.48,12.77 39.41,13.06C39.34,13.36 39.26,13.95 39.08,14.6C38.9,15.25 38.59,16.11 38.32,16.98C38.04,17.85 37.75,18.87 37.43,19.82C37.12,20.76 36.79,21.79 36.45,22.65C36.11,23.51 35.71,24.34 35.41,24.98C35.11,25.62 34.8,26.09 34.66,26.47C34.52,26.84 34.54,26.97 34.57,27.21C34.61,27.44 34.72,27.7 34.87,27.89C35.02,28.08 35.24,28.25 35.47,28.34C35.69,28.43 35.97,28.46 36.21,28.43C36.44,28.39 36.7,28.28 36.89,28.13C37.08,27.98 37.18,27.91 37.34,27.53Z"/><path id="w12-rays-s1" d="M36.96,28.07C37.22,27.85 37.39,27.45 37.83,27.09C38.27,26.73 38.92,26.3 39.62,25.91C40.32,25.52 41.22,25.15 42.02,24.76C42.82,24.38 43.71,24.01 44.41,23.6C45.11,23.2 45.81,22.73 46.23,22.32C46.66,21.9 46.82,21.36 46.96,21.13C47.09,20.89 47.03,20.98 47.04,20.91C47.05,20.83 47.03,20.75 47,20.68C46.97,20.61 46.91,20.54 46.85,20.5C46.79,20.45 46.71,20.42 46.63,20.42C46.56,20.41 46.47,20.42 46.4,20.46C46.34,20.49 46.37,20.44 46.22,20.61C46.08,20.77 45.94,21.17 45.52,21.43C45.1,21.7 44.42,21.92 43.72,22.2C43.02,22.47 42.15,22.8 41.32,23.1C40.49,23.41 39.58,23.72 38.76,24.02C37.95,24.32 37.05,24.58 36.43,24.89C35.81,25.21 35.34,25.65 35.04,25.93C34.74,26.2 34.71,26.32 34.63,26.55C34.56,26.78 34.54,27.06 34.59,27.29C34.64,27.53 34.77,27.78 34.93,27.96C35.09,28.14 35.32,28.29 35.55,28.37C35.78,28.44 36.06,28.46 36.29,28.41C36.53,28.36 36.7,28.3 36.96,28.07Z"/><path id="w12-rays-s2" d="M36.47,28.36C36.68,28.28 36.63,27.96 36.98,27.93C37.34,27.89 37.95,27.98 38.6,28.17C39.25,28.36 40.12,28.76 40.88,29.06C41.64,29.37 42.46,29.79 43.15,30.01C43.85,30.24 44.59,30.45 45.06,30.43C45.54,30.41 45.81,30 45.99,29.89C46.17,29.77 46.12,29.79 46.15,29.72C46.19,29.66 46.22,29.57 46.22,29.5C46.22,29.42 46.2,29.34 46.16,29.27C46.12,29.21 46.06,29.14 45.99,29.11C45.93,29.07 45.85,29.04 45.77,29.04C45.7,29.04 45.65,29.06 45.54,29.1C45.44,29.15 45.46,29.39 45.16,29.3C44.86,29.21 44.35,28.88 43.76,28.57C43.17,28.26 42.37,27.82 41.64,27.43C40.9,27.04 40.1,26.58 39.35,26.23C38.6,25.88 37.8,25.43 37.16,25.33C36.52,25.23 35.9,25.52 35.53,25.64C35.15,25.76 35.07,25.88 34.91,26.06C34.75,26.24 34.63,26.49 34.59,26.73C34.54,26.96 34.56,27.24 34.64,27.47C34.72,27.7 34.88,27.93 35.06,28.09C35.24,28.25 35.49,28.37 35.73,28.41C35.96,28.46 36.26,28.44 36.47,28.36Z"/><clipPath id="w12-rays-clip"><use href="#w12-rays-s0" /><use href="#w12-rays-s1" /><use href="#w12-rays-s2" /></clipPath><mask id="w12-rays-rim" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#000"/><use href="#w12-rays-s0" fill="#fff"/><use href="#w12-rays-s1" fill="#fff"/><use href="#w12-rays-s2" fill="#fff"/><g transform="translate(1.9,2.4)"><use href="#w12-rays-s0" fill="#000"/><use href="#w12-rays-s1" fill="#000"/><use href="#w12-rays-s2" fill="#000"/></g></mask><mask id="w12-rays-core" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#000"/><use href="#w12-rays-s0" fill="#fff"/><use href="#w12-rays-s1" fill="#fff"/><use href="#w12-rays-s2" fill="#fff"/><g transform="translate(-3.2,-4)"><use href="#w12-rays-s0" fill="#000"/><use href="#w12-rays-s1" fill="#000"/><use href="#w12-rays-s2" fill="#000"/></g></mask></defs><use href="#w12-rays-s0" fill="#101010" stroke="#101010" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/><use href="#w12-rays-s1" fill="#101010" stroke="#101010" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/><use href="#w12-rays-s2" fill="#101010" stroke="#101010" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/><use href="#w12-rays-s0" fill="#bdbdbd"/><use href="#w12-rays-s1" fill="#bdbdbd"/><use href="#w12-rays-s2" fill="#bdbdbd"/><g clip-path="url(#w12-rays-clip)"><g transform="translate(3.4,4.0)" opacity="0.26"><use href="#w12-rays-s0" fill="#3b3b3b"/><use href="#w12-rays-s1" fill="#3b3b3b"/><use href="#w12-rays-s2" fill="#3b3b3b"/></g><g transform="translate(6.6,7.6)" opacity="0.13"><use href="#w12-rays-s0" fill="#101010"/><use href="#w12-rays-s1" fill="#101010"/><use href="#w12-rays-s2" fill="#101010"/></g></g><g mask="url(#w12-rays-core)" opacity="0.2"><rect width="64" height="64" fill="#101010"/></g><g mask="url(#w12-rays-rim)" opacity="0.52"><rect width="64" height="64" fill="#fbfbfb"/></g><g clip-path="url(#w12-rays-clip)"></g></g>
+</svg>

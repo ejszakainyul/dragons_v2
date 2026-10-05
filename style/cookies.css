@@ -1,0 +1,44 @@
+/* =====================================================================
+   Süti / háttérhang hozzájárulás
+   ===================================================================== */
+
+#cookieModal {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 400;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: none;
+  animation: cookieIn .5s var(--ease) both;
+}
+
+@keyframes cookieIn { from { opacity: 0; transform: translateY(24px); } }
+
+#cookieModalContent {
+  pointer-events: auto;
+  width: min(520px, 100%);
+  padding: 24px 28px;
+  border-radius: var(--r-lg);
+  background: rgba(10, 15, 27, .96);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+#cookieModalContent h2 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+#cookieModalContent p {
+  color: var(--muted);
+  font-size: .9rem;
+  margin-bottom: 18px;
+}
+
+.cookie-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.cookie-actions .btn { flex: 1; min-width: 140px; }
+
+@media (max-width: 480px) {
+  .cookie-actions { flex-direction: column; }
+}

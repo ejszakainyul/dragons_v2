@@ -1,0 +1,202 @@
+/* =====================================================================
+   A jóslat (kérdőív) + eredményképernyő
+   ===================================================================== */
+
+.tint-def { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+body.quiz-page { overflow-x: hidden; }
+
+.quiz-stage {
+  position: relative;
+  z-index: 4;                 /* az eső/villám canvas fölött */
+  min-height: calc(100vh - var(--nav-h) - 60px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+/* --- Haladásjelző --------------------------------------------------- */
+.quiz-progress {
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, .06);
+  z-index: 60;
+}
+.quiz-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--grad-ember);
+  box-shadow: 0 0 14px var(--accent);
+  transition: width .6s var(--ease);
+}
+
+/* --- Kérdés --------------------------------------------------------- */
+.quiz-container {
+  width: min(880px, 92vw);
+  text-align: center;
+}
+
+.quiz-step {
+  font-size: .78rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 26px;
+}
+
+.question {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 .42em;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(1.05rem, 2.2vw, 1.65rem);
+  line-height: 1.75;
+  margin-bottom: 44px;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, .8);
+}
+
+.question .word { display: inline-flex; }
+
+/* Szándékosan NINCS will-change: betűnként külön kompozit réteget hozna
+   létre (kérdésenként több százat), amitől akadozik a rajzolás. */
+.question span {
+  display: inline-block;
+  transition: transform .25s var(--ease), color .25s var(--ease);
+}
+
+.question.fade-in  { animation: qFadeIn  .8s var(--ease) both; }
+.question.fade-out { animation: qFadeOut .45s var(--ease) both; }
+
+@keyframes qFadeIn  { from { opacity: 0; transform: translateY(24px) scale(.97); } }
+@keyframes qFadeOut { to   { opacity: 0; transform: translateY(-20px) scale(.98); } }
+
+/* --- Válaszgombok --------------------------------------------------- */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.option {
+  position: relative;
+  min-width: 170px;
+  padding: 16px 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(10, 15, 27, .8);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  animation: optionIn .55s var(--ease) both;
+  transition: transform .25s var(--ease), border-color .3s var(--ease), color .3s var(--ease);
+}
+
+@keyframes optionIn { from { opacity: 0; transform: translateY(18px); } }
+
+/* Parázsfény a gomb alól, hoverre felkúszik */
+.option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--grad-ember);
+  transform: translateY(101%);
+  transition: transform .4s var(--ease);
+}
+
+.option:hover,
+.option:focus-visible {
+  transform: translateY(-3px);
+  border-color: transparent;
+  color: #1b0d03;
+  outline: none;
+}
+.option:hover::before,
+.option:focus-visible::before { transform: translateY(0); }
+
+.option:disabled { opacity: .4; cursor: default; transform: none; }
+
+/* --- Hangengedély-ablak --------------------------------------------- */
+#sound-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 5, 11, .88);
+  backdrop-filter: blur(6px);
+  animation: qFadeIn .4s var(--ease) both;
+}
+
+.sound-prompt-box {
+  width: min(430px, 88vw);
+  padding: 36px 32px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.sound-prompt-box h2 { font-size: 1.4rem; margin-bottom: 8px; }
+.sound-prompt-box p  { color: var(--muted); font-size: .94rem; margin-bottom: 24px; }
+.sound-prompt-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* --- Eredmény ------------------------------------------------------- */
+.result { display: none; }
+.result.visible { display: block; animation: qFadeIn .7s var(--ease) both; }
+
+.result-inner {
+  width: min(560px, 92vw);
+  margin: 0 auto;
+  padding: 38px 34px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.result-kicker {
+  font-size: .74rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.result-dragon {
+  position: relative;
+  width: 68%;
+  margin: 10px auto 26px;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .6));
+}
+
+.result-form { text-align: left; }
+.result-form .field { margin-bottom: 16px; }
+.result-form .btn   { width: 100%; margin-top: 6px; }
+
+.result-error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 93, 108, .12);
+  border-left: 3px solid var(--danger);
+  color: #ffc2c8;
+  font-size: .9rem;
+}
+
+@media (max-width: 560px) {
+  .options { flex-direction: column; align-items: stretch; }
+  .option  { width: 100%; }
+}

@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sarkanyok",
+      "runtimeExecutable": "C:/xampp/apache/bin/httpd.exe",
+      "runtimeArgs": ["-f", "C:/xampp/apache/conf/httpd.conf", "-DFOREGROUND"],
+      "port": 80,
+      "url": "http://localhost"
+    },
+    {
+      "name": "mysql",
+      "runtimeExecutable": "C:/xampp/mysql/bin/mysqld.exe",
+      "runtimeArgs": ["--defaults-file=C:/xampp/mysql/bin/my.ini", "--console"],
+      "port": 3306
+    }
+  ]
+}

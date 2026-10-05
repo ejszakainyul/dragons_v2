@@ -1,0 +1,379 @@
+/* =====================================================================
+   Navigáció + lábléc
+   ===================================================================== */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 200;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: #1b0d03;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.skip-link:focus { left: 16px; }
+
+/* --- Fejléc --------------------------------------------------------- */
+.site-nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 100;
+  height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  /* Nincs backdrop-filter: a mögötte mozgó háttér miatt minden
+     képkockán újra kellett volna mosni — gyenge gépen ez akasztott.
+     Helyette sötét, felül sűrűbb átmenet. */
+  background: linear-gradient(180deg, rgba(3, 5, 12, .92), rgba(4, 7, 16, .62));
+  border-bottom: 1px solid transparent;
+  transition: background .35s var(--ease), border-color .35s var(--ease), height .35s var(--ease);
+}
+
+.site-nav.scrolled {
+  background: rgba(4, 7, 15, .96);
+  border-bottom-color: rgba(138, 150, 184, .18);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .5);
+}
+
+.nav-inner {
+  width: min(1320px, 94vw);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+/* --- Logó ----------------------------------------------------------- */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--text);
+  flex: none;
+}
+.nav-brand:hover { color: var(--text); }
+
+/* Címer: kerek viking pajzs, körülötte lassan forgó rúnagyűrű */
+.brand-mark {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.brand-shield {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 8px rgba(255, 138, 61, .45));
+  transition: transform .5s var(--ease);
+}
+.brand-ring {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  opacity: .75;
+  animation: brandRing 40s linear infinite;
+}
+.nav-brand:hover .brand-shield { transform: rotate(-18deg) scale(1.06); }
+@keyframes brandRing { to { transform: rotate(-1turn); } }
+
+.brand-text { display: flex; flex-direction: column; line-height: 1.05; }
+.brand-text strong {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  letter-spacing: .06em;
+  background: linear-gradient(180deg, #fff6e0, #d9c7a1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.brand-text small { font-size: .68rem; color: var(--muted); letter-spacing: .22em; text-transform: uppercase; }
+
+/* --- Linkek --------------------------------------------------------- */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline: auto;
+}
+
+.nav-links a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: .93rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color .25s var(--ease), background .25s var(--ease);
+}
+
+.nav-links a:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+
+.nav-links a.active { color: var(--text); background: rgba(255, 138, 61, .13); }
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  translate: -50% 0;
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--grad-ember);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.nav-ico { font-size: .95em; }
+
+/* Rúna-ikonok: a rámutatott / aktív menüpont rúnája felizzik */
+.rune-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  font-family: var(--font-rune);
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--rune-2);
+  background: rgba(79, 255, 224, .06);
+  border: 1px solid rgba(79, 255, 224, .16);
+  transition: color .25s var(--ease), text-shadow .25s var(--ease), border-color .25s var(--ease), background .25s var(--ease);
+}
+.nav-links a:hover .rune-ico,
+.nav-links a.active .rune-ico {
+  color: #fff;
+  border-color: rgba(79, 255, 224, .5);
+  background: rgba(79, 255, 224, .12);
+  text-shadow: 0 0 8px var(--rune), 0 0 16px var(--rune);
+}
+
+/* --- Jobb oldali műveletek ------------------------------------------ */
+.nav-actions { display: flex; align-items: center; gap: 9px; flex: none; }
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: .9rem;
+  font-weight: 600;
+  transition: border-color .25s var(--ease), box-shadow .25s var(--ease);
+}
+.nav-user:hover { color: var(--text); border-color: var(--ice); box-shadow: var(--glow-ice); }
+
+.nav-avatar {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--grad-ember);
+  color: #1b0d03;
+  font-weight: 800;
+  text-transform: uppercase;
+  flex: none;
+}
+
+/* --- Hangkapcsoló --------------------------------------------------- */
+.sound-toggle { margin: 0; cursor: pointer; display: flex; align-items: center; }
+.sound-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.sound-track {
+  position: relative;
+  width: 46px;
+  height: 25px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  display: block;
+  transition: background .3s var(--ease), border-color .3s var(--ease);
+}
+
+.sound-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #64728f;
+  display: grid;
+  place-items: center;
+  transition: transform .3s var(--ease), background .3s var(--ease);
+}
+.sound-knob::after { content: '🔇'; font-size: 9px; }
+
+.sound-toggle input:checked + .sound-track {
+  background: rgba(255, 138, 61, .3);
+  border-color: var(--accent);
+}
+.sound-toggle input:checked + .sound-track .sound-knob {
+  transform: translateX(21px);
+  background: var(--grad-ember);
+}
+.sound-toggle input:checked + .sound-track .sound-knob::after { content: '🔊'; }
+.sound-toggle input:focus-visible + .sound-track { box-shadow: 0 0 0 3px rgba(79, 214, 255, .3); }
+
+/* --- Hamburger ------------------------------------------------------ */
+.nav-burger {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.nav-burger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text);
+  transition: transform .3s var(--ease), opacity .2s var(--ease);
+}
+.nav-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-burger.open span:nth-child(2) { opacity: 0; }
+.nav-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Asztali nézetben a fiók-műveletek a jobb oldali sávban vannak,
+   a menübe másolt változat rejtve marad. */
+.nav-links-auth { display: none; }
+
+/* --- Mobil ---------------------------------------------------------- */
+@media (max-width: 1080px) {
+  .nav-links-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* A fejlécben csak az avatar és a hamburger marad */
+  .nav-actions .btn { display: none; }
+
+  .nav-links {
+    position: fixed;
+    inset: var(--nav-h) 0 auto 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    margin: 0;
+    padding: 16px 5vw 26px;
+    background: rgba(5, 8, 16, .97);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .4s var(--ease), opacity .3s var(--ease);
+  }
+  .nav-links.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .nav-links a { padding: 14px 16px; border-radius: var(--r-sm); font-size: 1rem; }
+  .nav-links a.active::after { display: none; }
+
+  .nav-burger { display: flex; }
+  .nav-user-name { display: none; }
+  .nav-user { padding: 5px; }
+}
+
+@media (max-width: 560px) {
+  .brand-text small { display: none; }
+  /* A hangkapcsoló marad — a többi gomb már a lenyíló menüben van,
+     így itt bőven elfér. */
+}
+
+/* --- Lábléc --------------------------------------------------------- */
+.site-footer { margin-top: 90px; padding-bottom: 40px; }
+
+.footer-inner {
+  display: grid;
+  gap: 26px;
+  padding-top: 40px;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.footer-brand { display: flex; gap: 14px; align-items: flex-start; }
+.footer-brand > span { font-size: 1.9rem; filter: drop-shadow(0 0 12px rgba(255, 138, 61, .5)); }
+.footer-sigil {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  font-family: var(--font-rune);
+  color: var(--rune);
+  border: 1px solid rgba(79, 255, 224, .3);
+  background: radial-gradient(circle, rgba(79, 255, 224, .12), transparent 70%);
+  text-shadow: 0 0 12px var(--rune);
+}
+
+/* Rúnaszalag a lábléc tetején: két felirat, középen Othala */
+.footer-runeband {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(1180px, 92vw);
+  margin: 0 auto 40px;
+  font-family: var(--font-rune);
+  color: var(--rune-2);
+  letter-spacing: .35em;
+  font-size: .9rem;
+  opacity: .75;
+}
+.footer-runeband span {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+  padding: 8px 0;
+  border-top: 1px solid rgba(79, 255, 224, .18);
+  border-bottom: 1px solid rgba(79, 255, 224, .18);
+  text-shadow: 0 0 8px rgba(79, 255, 224, .5);
+}
+.footer-runeband i {
+  font-style: normal;
+  font-size: 1.5rem;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent);
+  letter-spacing: 0;
+}
+.footer-brand strong { font-family: 'Cinzel', serif; letter-spacing: .05em; }
+.footer-brand p { font-size: .9rem; }
+
+.footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.footer-links a { color: var(--muted); font-size: .9rem; }
+.footer-links a:hover { color: var(--ice); }
+
+.footer-copy { grid-column: 1 / -1; font-size: .82rem; margin: 0; }
+
+@media (max-width: 700px) {
+  .footer-inner { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .footer-runeband span:last-child { display: none; }
+  .footer-runeband { letter-spacing: .25em; font-size: .8rem; }
+}

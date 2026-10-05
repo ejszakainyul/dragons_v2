@@ -1,0 +1,316 @@
+.test{
+    image-rendering: pixelated;
+}
+
+
+.main-link {
+    display: inline-block;
+    color: white;
+    background: linear-gradient(to right, #1974cf, #009bcf);
+    padding: 14px 26px;
+    border-radius: 15px;
+    text-decoration: none;
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 1px 1px 10px #000;
+    user-select: none;
+}
+
+.main-link:hover {
+    background: linear-gradient(to right, #1d86f0, #00ade7);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(120, 0, 255, 0.6);
+    color: #fff;
+}
+
+.main-link:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+}
+
+
+
+body {
+    background-image: url(img/bg5.jpg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    width: 100%;    
+    margin-bottom: 200px !important;
+}
+
+@media (max-width: 1000px) {
+
+    body {
+        background-size: cover !important;
+    }   
+
+}
+    
+.empty {
+    height: 300px;
+    width: 100%;
+    display: none;
+    position: relative;
+    left: 0;
+    top: 0;
+}
+
+.form-container {
+    margin-top: 0px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    width: 300px;
+    height: 500px;
+    max-height: 580px;
+    border-radius: 24px;
+    background: rgba(3, 3, 3, 0.3);
+    box-shadow: 1px 1px 10px #000;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: height 0.3s ease-in-out;
+}
+
+label {
+    font-family: 'Open Sans Condensed', sans-serif;
+    color: #fff;
+    font-size: 21px;
+    font-weight: bold;
+    padding: 10px;
+    display: block;
+    text-align: center;
+}
+
+input[type="text"], input[type="email"], input[type="password"], input[type="submit"], input[type="delete"] {
+    font-family: 'Open Sans Condensed', sans-serif;
+    width: 80%;
+    display: block;
+    margin: 9px auto;
+    color: #fff;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(3, 3, 3, .25);
+    transition: all 0.2s ease-in-out;
+    font-size: 18px;
+}
+
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+    outline: none;
+    box-shadow: 3px 3px 10px #333;
+    background: rgba(3, 3, 3, .5);
+    font-size: 21px;
+}
+
+input[type="submit"] {
+    background: linear-gradient(to right, #1974cf, #009bcf);
+    font-size: 24px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 50px;
+    padding: 12px;
+    text-align: center;
+}
+
+input[type="submit"]:hover {
+    font-size: 25px;
+    background: linear-gradient(to right, #1d86f0, #00ade7);
+}
+
+input[type="delete"] {
+    background: linear-gradient(to right, #b22222, #ff4500); /* dark red to orange-red */
+    font-size: 24px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 50px;
+    padding: 12px;
+    text-align: center;
+}
+
+.message-container {
+    width: 100%;
+    margin-top: 20px;
+    display: block;
+}
+
+.error, .success {
+    font-size: 18px;
+    margin-bottom: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bolder;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease-in-out;
+    word-wrap: break-word;
+    white-space: normal;
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.success {
+    color: #fff;
+    background: rgba(0, 150, 0, 0.5);
+    border: 2px solid #00c800;
+}
+
+.success span#countdown {
+    display: inline;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.error {
+    color: #fff;
+    background: rgba(255, 0, 0, 0.5);
+    border: 2px solid #ff5555;
+}
+
+.error:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 15px rgba(255, 0, 0, 0.4);
+}
+
+.success:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 15px rgba(0, 150, 0, 0.4);
+}
+
+.loginbut {
+    color: white;
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 20px 20px;
+    border-radius: 20px;
+    text-decoration: none;
+    margin: 20px;
+    font-size: 2rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: block;
+    user-select: none;
+    text-align: center;
+}
+
+.loginbut:hover {
+    background-color: #ddd;
+    color: black;
+    box-shadow: 0 0 10px rgba(120, 0, 255, 0.6), 0 0 5px rgba(30, 0, 150, 1);
+}
+ó
+
+.main-container {
+    width: 100%;
+    padding-top: 100px;
+    background-attachment: fixed;
+}
+
+.hero-section {
+    text-align: center;
+    padding: 100px 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 32px;
+    margin: 40px auto;
+    width: 90%;
+    max-width: 900px;
+    color: white;
+    box-shadow: 1px 1px 10px #000;
+}
+
+.hero-section h1 {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.hero-section p {
+    font-size: 1.5rem;
+}
+
+.scroll-button {
+    margin-top: 30px;
+    display: inline-block;
+    background: linear-gradient(to right, #1974cf, #009bcf);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 15px;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.scroll-button:hover {
+    background: linear-gradient(to right, #1d86f0, #00ade7);
+    transform: scale(1.05);
+}
+
+.preview-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+    margin: 60px auto;
+    width: 95%;
+}
+
+.preview-card {
+    background: rgba(3,3,3,0.4);
+    color: white;
+    border-radius: 20px;
+    padding: 30px;
+    width: 280px;
+    box-shadow: 1px 1px 10px #000;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.preview-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 15px rgba(120, 0, 255, 0.6);
+}
+
+.preview-link {
+    display: inline-block;
+    margin-top: 15px;
+    text-decoration: none;
+    color: #00ade7;
+    font-weight: bold;
+}
+
+.info-section {
+    background: rgba(3,3,3,0.4);
+    box-shadow: 1px 1px 10px #000;
+    border-radius: 25px;
+    padding: 40px 30px;
+    margin: 80px auto;
+    max-width: 800px;
+    text-align: center;
+    color: white;
+}
+
+.info-button {
+    display: inline-block;
+    margin-top: 20px;
+    background: linear-gradient(to right, #1974cf, #009bcf);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.info-button:hover {
+    background: linear-gradient(to right, #1d86f0, #00ade7);
+    transform: scale(1.05);
+}
+
+

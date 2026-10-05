@@ -1,0 +1,229 @@
+/* =====================================================================
+   A műhely (nyitott.php)
+   ===================================================================== */
+
+.tint-def { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+.workshop-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(200px, 250px);
+  gap: 26px;
+  align-items: start;
+}
+
+/* --- Testrész-listák ------------------------------------------------ */
+.parts-column { display: flex; flex-direction: column; gap: 20px; }
+
+.parts-panel {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.parts-panel h2 {
+  font-size: .78rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.parts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 9px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.part-item {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 9px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: grab;
+  text-align: center;
+  transition: transform .22s var(--ease), border-color .22s var(--ease),
+              background .22s var(--ease), opacity .22s var(--ease);
+}
+
+.part-item:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  background: rgba(255, 138, 61, .1);
+}
+
+.part-item:active   { cursor: grabbing; }
+.part-item.dragging { opacity: .35; }
+
+.part-item.used {
+  opacity: .32;
+  border-color: var(--ice);
+  background: rgba(79, 214, 255, .1);
+}
+.part-item.used:hover { transform: none; }
+
+.part-item img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  /* A nagy felbontású rajzoknál a sima skálázás a jó;
+     a pixelated itt visszablokkosítaná az éleket. */
+  image-rendering: auto;
+  pointer-events: none;
+}
+
+.part-name { font-size: .66rem; line-height: 1.25; color: var(--text); }
+.part-meta { font-size: .62rem; color: var(--muted); white-space: nowrap; }
+
+/* --- Színpad -------------------------------------------------------- */
+.workshop-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.dragon-area {
+  position: relative;
+  width: min(380px, 80%);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px dashed var(--line-strong);
+  transition: border-color .3s var(--ease), background .3s var(--ease), transform .3s var(--ease);
+}
+
+.dragon-area.has-parts { border-style: solid; }
+
+.dragon-area.drag-over {
+  border-color: var(--accent);
+  background: rgba(255, 138, 61, .08);
+  transform: scale(1.02);
+}
+
+.area-ring {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  border: 1px solid rgba(79, 214, 255, .16);
+  box-shadow: inset 0 0 60px rgba(79, 214, 255, .08);
+  animation: ringSpin 40s linear infinite;
+  pointer-events: none;
+}
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+
+.dragon-area .dragon-render {
+  width: 82%;
+  filter: drop-shadow(0 16px 30px rgba(0, 0, 0, .55));
+}
+
+.area-hint {
+  position: absolute;
+  margin: 0;
+  color: var(--muted);
+  font-size: .9rem;
+  pointer-events: none;
+}
+
+/* --- Felhelyezett darabok ------------------------------------------- */
+.placed-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; min-height: 32px; }
+
+.placed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: border-color .2s var(--ease), background .2s var(--ease);
+}
+.placed-chip:hover { border-color: var(--danger); background: rgba(255, 93, 108, .12); }
+.placed-chip i {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .1);
+  font-style: normal;
+  font-size: .68rem;
+}
+
+/* --- Statisztikák --------------------------------------------------- */
+.workshop-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 460px;
+}
+
+.wstat { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; }
+.wstat-label { font-size: .8rem; color: var(--muted); }
+.wstat b {
+  font-family: 'Cinzel', serif;
+  font-size: 1.25rem;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+.wstat .stat-bar { grid-column: 1 / -1; }
+
+/* --- Mentés --------------------------------------------------------- */
+.workshop-save {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 12px 14px;
+  width: 100%;
+  max-width: 460px;
+  align-items: end;
+}
+.workshop-save .btn { grid-column: 1 / -1; }
+.workshop-save .color-field input { height: 46px; }
+
+.workshop-msg {
+  margin: 0;
+  padding: 11px 16px;
+  border-radius: var(--r-sm);
+  font-size: .9rem;
+  width: 100%;
+  max-width: 460px;
+  text-align: center;
+}
+.workshop-msg.is-error   { background: rgba(255, 93, 108, .12); border-left: 3px solid var(--danger); color: #ffc2c8; }
+.workshop-msg.is-success { background: rgba(45, 212, 167, .12); border-left: 3px solid var(--ok);     color: #a9f1de; }
+
+/* --- Reszponzív ----------------------------------------------------- */
+@media (max-width: 1080px) {
+  .workshop-layout { grid-template-columns: 1fr; }
+  .parts-column { flex-direction: row; flex-wrap: wrap; }
+  .parts-panel  { flex: 1 1 260px; }
+  .workshop-stage { order: -1; }
+  .parts-list { max-height: 210px; }
+}
+
+@media (max-width: 560px) {
+  .workshop-stage { padding: 20px 16px; }
+  .workshop-stats { grid-template-columns: 1fr; gap: 14px; }
+  .workshop-save  { grid-template-columns: 1fr; }
+  .part-item img  { width: 40px; height: 40px; }
+}

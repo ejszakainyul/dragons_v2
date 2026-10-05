@@ -1,0 +1,392 @@
+/* =====================================================================
+   A JÓSLAT — a 3D-s utazás felülete
+   A canvas teljes képernyős; minden szöveg fölötte lebeg.
+   ===================================================================== */
+
+body.journey-active {
+  padding: 0 !important;
+  overflow: hidden;
+}
+body.journey-active .site-nav,
+body.journey-active .site-footer { display: none; }
+
+/* A süti/háttérzene-ablak itt zavarna: az utazásnak saját hangindítója van */
+body.journey-active #cookieModal { display: none; }
+
+#journeyRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 60;              /* a lap többi rétege fölött */
+  overflow: hidden;
+  background: #05070f;
+}
+
+#journeyCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* A szöveges réteg alapból átereszti a kattintást — csak a gombok fogják */
+.j-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text, #e9eefb);
+}
+.j-ui button,
+.j-ui input,
+.j-ui label { pointer-events: auto; }
+
+/* Vignetta: a szélek felé sötétedik, így a szöveg mindig olvasható */
+.j-ui::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 78% at 50% 50%, transparent 42%, rgba(2, 4, 9, .72) 100%),
+    linear-gradient(to bottom, rgba(2, 4, 9, .55), transparent 22%, transparent 62%, rgba(2, 4, 9, .72));
+}
+.j-ui > * { position: relative; z-index: 2; }
+
+/* --- Haladásjelző --------------------------------------------------- */
+.j-progress {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, .08);
+}
+.j-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #ff6b2c, #ffc46b);
+  box-shadow: 0 0 16px #ff8a3d;
+  transition: width 1.2s cubic-bezier(.22, .9, .32, 1);
+}
+
+/* --- Nyitóképernyő -------------------------------------------------- */
+.j-intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 30px;
+  /* Elmosás (backdrop-filter) nélkül: a mögötte futó 3D kép miatt
+     minden képkockán újra kellett volna mosni. */
+  background: radial-gradient(ellipse at 50% 45%, rgba(3, 5, 11, .62), rgba(3, 5, 11, .88));
+  transition: opacity .7s ease, transform .7s ease;
+}
+.j-intro.is-gone { opacity: 0; transform: scale(1.06); pointer-events: none; }
+
+.j-kicker {
+  font-size: .72rem;
+  letter-spacing: .38em;
+  text-transform: uppercase;
+  color: #ff8a3d;
+  margin: 0 0 6px;
+}
+
+.j-intro h1 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(2.1rem, 6vw, 4rem);
+  margin: 0 0 16px;
+  text-shadow: 0 0 44px rgba(79, 214, 255, .45);
+  animation: jRise 1.2s cubic-bezier(.22, .9, .32, 1) both;
+}
+
+.j-intro-text {
+  max-width: 52ch;
+  color: #a9b6d3;
+  line-height: 1.75;
+  margin: 0 0 28px;
+  animation: jRise 1.2s cubic-bezier(.22, .9, .32, 1) .15s both;
+}
+
+.j-intro-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: jRise 1.2s cubic-bezier(.22, .9, .32, 1) .3s both;
+}
+
+.j-hint {
+  margin-top: 26px;
+  font-size: .8rem;
+  color: #64728f;
+  animation: jRise 1.2s ease .5s both;
+}
+
+@keyframes jRise { from { opacity: 0; transform: translateY(24px); } }
+
+/* --- Fejezetcím ----------------------------------------------------- */
+.j-chapter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+}
+.j-chapter.is-in  { animation: jChapterIn  1.2s cubic-bezier(.22, .9, .32, 1) both; }
+.j-chapter.is-out { animation: jChapterOut .9s ease both; }
+
+.j-chapter-kicker {
+  font-size: .72rem;
+  letter-spacing: .44em;
+  text-transform: uppercase;
+  color: #4fd6ff;
+  margin-bottom: 10px;
+}
+
+.j-chapter-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(2rem, 6vw, 4.2rem);
+  margin: 0;
+  letter-spacing: .04em;
+  text-shadow: 0 0 60px rgba(0, 0, 0, .9), 0 0 24px rgba(255, 138, 61, .3);
+}
+
+@keyframes jChapterIn {
+  from { opacity: 0; letter-spacing: .3em; filter: blur(10px); }
+  to   { opacity: 1; letter-spacing: normal; filter: blur(0); }
+}
+@keyframes jChapterOut {
+  to { opacity: 0; transform: scale(1.09); filter: blur(7px); }
+}
+
+/* --- Kérdés --------------------------------------------------------- */
+.j-question {
+  position: absolute;
+  top: clamp(40px, 7vh, 78px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(820px, 88vw);
+  text-align: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(.98rem, 1.7vw, 1.42rem);
+  line-height: 1.85;
+  text-shadow: 0 2px 26px rgba(0, 0, 0, .95), 0 0 50px rgba(0, 0, 0, .8);
+}
+
+.j-word {
+  display: inline-block;
+  opacity: 0;
+  animation: jWord .75s cubic-bezier(.22, .9, .32, 1) both;
+}
+@keyframes jWord {
+  from { opacity: 0; transform: translateY(14px) rotateX(-55deg); filter: blur(5px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* --- Kapufeliratok (a 3D-s kapukra vetítve) ------------------------- */
+.j-gate-labels { position: absolute; inset: 0; }
+
+.j-gate-label {
+  position: absolute;
+  translate: -50% -50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 24px;
+  border: 1px solid var(--gate-color, #ff8a3d);
+  border-radius: 999px;
+  background: rgba(4, 7, 14, .72);
+  color: #fff;
+  font: inherit;
+  font-size: clamp(.86rem, 1.15vw, 1.02rem);
+  font-weight: 600;
+  letter-spacing: .05em;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  animation: jGateIn .7s cubic-bezier(.22, .9, .32, 1) both;
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.j-gate-label:hover,
+.j-gate-label:focus-visible {
+  transform: translate(-50%, -50%) scale(1.09);
+  background: rgba(4, 7, 14, .92);
+  box-shadow: 0 0 34px var(--gate-color, #ff8a3d);
+  outline: none;
+}
+
+.j-gate-rune {
+  color: var(--gate-color, #ff8a3d);
+  font-size: .8em;
+  filter: drop-shadow(0 0 8px var(--gate-color, #ff8a3d));
+}
+
+@keyframes jGateIn {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)) scale(.86); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* --- Csavar-felirat ------------------------------------------------- */
+.j-twist {
+  position: absolute;
+  bottom: clamp(90px, 16vh, 170px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(640px, 86vw);
+  text-align: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(1.05rem, 2.2vw, 1.75rem);
+  color: #ffc46b;
+  text-shadow: 0 0 40px rgba(0, 0, 0, .95), 0 0 30px rgba(255, 138, 61, .45);
+  opacity: 0;
+}
+.j-twist.is-in { animation: jTwist 3.4s cubic-bezier(.22, .9, .32, 1) both; }
+
+@keyframes jTwist {
+  0%   { opacity: 0; transform: translateY(18px) scale(.96); filter: blur(8px); }
+  18%  { opacity: 1; transform: none; filter: blur(0); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.04); filter: blur(4px); }
+}
+
+/* --- Válasz-visszhang ----------------------------------------------- */
+.j-echo {
+  position: absolute;
+  bottom: clamp(56px, 10vh, 110px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(560px, 86vw);
+  text-align: center;
+  font-size: clamp(.9rem, 1.4vw, 1.06rem);
+  font-style: italic;
+  color: #bfe9ff;
+  text-shadow: 0 0 26px rgba(0, 0, 0, .95);
+  opacity: 0;
+}
+.j-echo.is-in { animation: jEcho 2.9s ease both; }
+
+@keyframes jEcho {
+  0%   { opacity: 0; transform: translateY(12px); }
+  16%  { opacity: 1; transform: none; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* --- Finálé --------------------------------------------------------- */
+.j-finale {
+  position: absolute;
+  right: clamp(16px, 4vw, 64px);
+  top: 50%;
+  translate: 0 -50%;
+  width: min(360px, 88vw);
+  padding: 30px 28px;
+  border-radius: 24px;
+  background: rgba(6, 10, 20, .88);
+  border: 1px solid rgba(120, 160, 230, .28);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .7);
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity .9s ease, transform .9s cubic-bezier(.22, .9, .32, 1);
+}
+.j-finale.is-in { opacity: 1; transform: translateX(0); }
+
+.j-finale h2 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.45rem;
+  margin: 0 0 22px;
+}
+
+.j-finale .field { margin-bottom: 16px; }
+.j-finale label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: .86rem;
+  color: #97a6c6;
+}
+.j-finale input[type="text"] {
+  width: 100%;
+  padding: 12px 15px;
+  font: inherit;
+  color: #e9eefb;
+  background: rgba(8, 13, 26, .85);
+  border: 1px solid rgba(120, 160, 230, .2);
+  border-radius: 10px;
+}
+.j-finale input[type="text"]:focus {
+  outline: none;
+  border-color: #4fd6ff;
+  box-shadow: 0 0 0 3px rgba(79, 214, 255, .16);
+}
+.j-finale input[type="color"] {
+  width: 100%;
+  height: 46px;
+  padding: 4px;
+  background: rgba(20, 28, 48, .7);
+  border: 1px solid rgba(120, 160, 230, .2);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.j-finale .btn { width: 100%; margin-top: 6px; }
+
+.j-error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 93, 108, .14);
+  border-left: 3px solid #ff5d6c;
+  color: #ffc2c8;
+  font-size: .88rem;
+}
+
+/* --- Alsó segédgombok ----------------------------------------------- */
+.j-corner {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.j-skip,
+.j-exit {
+  padding: 7px 15px;
+  border: 1px solid rgba(120, 160, 230, .22);
+  border-radius: 999px;
+  background: rgba(4, 7, 14, .6);
+  color: #64728f;
+  font: inherit;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: color .25s ease, border-color .25s ease;
+}
+.j-skip:hover,
+.j-exit:hover { color: #e9eefb; border-color: rgba(120, 160, 230, .5); }
+
+/* --- Mobil ---------------------------------------------------------- */
+@media (max-width: 720px) {
+  .j-question { top: 44px; font-size: .92rem; line-height: 1.7; }
+  .j-gate-label { padding: 10px 16px; font-size: .84rem; }
+  .j-finale {
+    right: 0; left: 0;
+    top: auto; bottom: 0;
+    translate: 0 0;
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+    transform: translateY(40px);
+  }
+  .j-finale.is-in { transform: translateY(0); }
+  .j-intro-actions { flex-direction: column; width: min(300px, 90vw); }
+  .j-intro-actions .btn { width: 100%; }
+}
+
+/* Csökkentett mozgás: a 3D-t nem is indítjuk el (lásd quiz.php) */

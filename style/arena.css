@@ -1,0 +1,207 @@
+/* =====================================================================
+   Az aréna
+   ===================================================================== */
+
+.tint-def { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+/* --- Választó ------------------------------------------------------- */
+.picker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+.picker-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 12px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.picker-card {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: transform .25s var(--ease), border-color .25s var(--ease),
+              background .25s var(--ease), box-shadow .25s var(--ease);
+}
+
+.picker-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--line-strong);
+}
+
+.picker-card.selected {
+  border-color: var(--accent);
+  background: rgba(255, 138, 61, .12);
+  box-shadow: var(--glow-ember);
+}
+
+.picker-card .dragon-render { width: 70px; margin-bottom: 4px; }
+.picker-card strong      { font-size: .88rem; line-height: 1.3; }
+.picker-card .picker-owner { font-size: .72rem; }
+.picker-stats            { font-size: .76rem; color: var(--accent-2); white-space: nowrap; }
+.picker-card small       { font-size: .68rem; }
+
+/* --- Indítás -------------------------------------------------------- */
+.arena-launch {
+  margin-top: 34px;
+  padding: 24px;
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.arena-launch p { margin-bottom: 14px; font-size: .92rem; }
+
+/* --- Csataeredmény -------------------------------------------------- */
+.battle { padding: 0; overflow: hidden; }
+.battle:hover { transform: none; }
+
+.battle-banner {
+  padding: 22px;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.battle.is-win  .battle-banner { background: linear-gradient(135deg, rgba(255,138,61,.28), rgba(255,196,107,.14)); }
+.battle.is-loss .battle-banner { background: linear-gradient(135deg, rgba(255,93,108,.24), rgba(120,40,60,.14)); }
+
+.battle-arena {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 34px 30px;
+}
+
+.fighter { text-align: center; }
+.fighter .dragon-render { width: min(170px, 68%); margin: 0 auto 12px; }
+.fighter h3 { margin: 0 0 2px; font-size: 1.15rem; }
+.fighter p  { font-size: .84rem; margin: 0 0 10px; }
+.fighter .stat-bar { max-width: 220px; margin: 0 auto 8px; }
+.fighter-hp { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.fighter.winner .dragon-render { filter: drop-shadow(0 0 26px rgba(255,138,61,.55)); }
+.fighter.loser  .dragon-render { filter: grayscale(.65) brightness(.6); }
+
+.battle-vs {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 0 10px;
+}
+.battle-vs span {
+  font-family: 'Cinzel', serif;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 22px rgba(255,138,61,.6);
+}
+.battle-vs small { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+
+/* --- Napló ---------------------------------------------------------- */
+.log-title {
+  margin: 0;
+  padding: 16px 30px 10px;
+  font-size: .78rem;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+
+.battle-log {
+  list-style: none;
+  margin: 0;
+  padding: 0 30px 30px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.battle-log li {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(120,160,230,.08);
+  font-size: .92rem;
+  /* Lépcsőzetes megjelenés, mintha élőben pörögne a csata */
+  animation: logIn .45s var(--ease) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+.battle-log li:last-child { border-bottom: 0; }
+
+@keyframes logIn { from { opacity: 0; transform: translateX(-14px); } }
+
+.log-round {
+  font-size: .72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.log-a .log-text { color: var(--accent-2); }
+.log-b .log-text { color: var(--ice-2); }
+.log-sys .log-text { color: var(--text); font-weight: 600; }
+
+.log-type-crit .log-text { font-weight: 700; text-shadow: 0 0 14px rgba(255,138,61,.45); }
+.log-type-miss .log-text { opacity: .6; font-style: italic; }
+.log-type-end  .log-text { font-family: 'Cinzel', serif; font-size: 1.05rem; }
+
+/* --- Előzmények ----------------------------------------------------- */
+.history-list { list-style: none; padding: 0; margin: 0; }
+.history-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border-left: 3px solid var(--line);
+  margin-bottom: 8px;
+  font-size: .92rem;
+}
+.history-list li.won  { border-left-color: var(--ok); }
+.history-list li.lost { border-left-color: var(--danger); }
+.history-names { flex: 1; min-width: 200px; }
+.history-names em { color: var(--muted); font-style: normal; padding: 0 6px; }
+.history-list .muted { font-size: .8rem; }
+
+/* --- Reszponzív ----------------------------------------------------- */
+@media (max-width: 900px) {
+  .picker-grid { grid-template-columns: 1fr; }
+  .picker-list { max-height: 300px; }
+}
+
+@media (max-width: 600px) {
+  .battle-arena { grid-template-columns: 1fr; gap: 16px; padding: 24px 18px; }
+  .battle-vs { flex-direction: row; }
+  .battle-log, .log-title { padding-inline: 18px; }
+  .battle-banner { font-size: 1.25rem; }
+}
