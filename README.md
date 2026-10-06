@@ -275,7 +275,7 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/battle.js` | a csata (hullámok, képességek, jutalmak) |
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
 | `script/game/art.js` | minden grafika kódból (épületek, helyszínek, effektek, sárkánynézet) |
-| `script/game/skins.js` | a sárkányok egyedi kinézete: fajta, minta, tüskesor, szarvak, farokvég |
+| `script/game/skins.js` | a sárkányrészek színezése, fajtanév |
 | `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
 | `script/game/terrain.js` | árnyalt hegycsúcsok a hegyvidékben (egy textúralapon) |
 | `script/game/hud.js`, `state.js`, `sfx.js`, `path.js`, `lore.js` | felület, mentés, hangok, A*, rúnakövek |
@@ -315,14 +315,23 @@ a fészek, a rúnakő, a jégtrón, a Muspell-oltár, a Valkűr-kő, a stég, a 
 a menhírek mind anyag-segédekkel készülnek (erezett deszka, faragott kő, moha,
 talajárnyék), utána egy közös simítás ad nekik peremfényt és árnyékoldalt.
 
-**Egyedi sárkányok** (`skins.js`): a testrészek mellett minden sárkány a
-nevéből és a részeiből (determinisztikusan) kap egy *fajtát*: testalkat
-(kígyószerű, nyúlánk, zömök, csontos, ívelt), kéttónusú szín hasoldallal, minta
-(csíkok, sávok, foltok, rozetták, pikkelyek, pettyek, rúnák), hátsor (lángok,
-kristályok, vitorla, füstfoszlányok, lemezek, tövisek, tüskék, moha), 0–2 pár
-szarv, fejdísz (taréj, gallér, bajusz, orrszarv), farokvég (buzogány, penge,
-legyező, kristály, láng, fullánk…) — ritkán egy második szárnypár is. A fajta
-neve a sárkány kártyáján olvasható (pl. „Pettyes parázshátú kígyósárkány").
+**Egyedi sárkányok:** mind a 18 fej, test, láb és szárny saját, kézzel tervezett
+formát kap (`tools/draw_head.php`, `draw_parts.php`, `draw_limbs.php`, közös
+segédek: `draw_kit.php`; újragenerálás: `php tools/build_svg.php`). Fejek:
+kölyökfej, klasszikus szarvas, tüskekoronás, csiszolt jégagyar, bikaszarvú
+lávapofa, karcsú viharfej hártyás szarvakkal, triceratopsz-gallér, csupasz
+koponya, csőr tollbóbitával, agancs, viperafej méregfogakkal, kristályfürt,
+sörényes-bajszos keleti sárkány, vadkanagyar, szakállas öreg, vassisak,
+lángsörény. Testek: fürge gyíktest, pikkelyes, kupolás páncélhát buzogánnyal,
+jégkristály-sor, bazaltlemez izzó repedésekkel, agárszerű viharúszós,
+stegoszaurusz-lemezes óriás, bordás árnyéktest, kígyótest hurokkal, hordóhas,
+vaspántos, mohos bunda, ködre bomló farok, csontváz, vitorlás hát… Lábak:
+hüllőkarom, oszlopláb, fordított térdű futóláb, markoló kéz, kecskepata,
+szőrös lópata, vaspáncél… Szárnyak: denevér (kicsi, széles, szakadt, égett,
+cafatos, fazettás, köpeny), tollas, villámtollas, rovar, sarló, uszony,
+kettős, kristály. A csatlakozási pontok változatlanok, így bármelyik
+kombinálható. A játék (`skins.js`) csak színez: saját szín, a has felé
+világosabban; a fajta neve a sárkány kártyáján olvasható.
 
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös

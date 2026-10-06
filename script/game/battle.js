@@ -354,7 +354,6 @@ export class BattleScene extends Phaser.Scene {
     const { wings, head, inner } = u.parts;
     const r = Math.random();
     if (wings) this.tweens.add({ targets: wings, rotation: { from: -0.1, to: 0.12 }, duration: 900 + r * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    if (u.parts.wings2) this.tweens.add({ targets: u.parts.wings2, rotation: { from: -0.5, to: -0.3 }, duration: 900 + r * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 180 });
     if (head) this.tweens.add({ targets: head, rotation: { from: -0.04, to: 0.05 }, duration: 1500 + r * 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     u.bob = this.tweens.add({ targets: inner, y: -4, duration: 1800 + r * 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     // Lélegzés: a test alig észrevehetően tágul
@@ -544,7 +543,7 @@ export class BattleScene extends Phaser.Scene {
   }
   #killAllFx(u) { for (const k of Object.keys(u.fx)) this.#killFx(u.fx[k]); u.fx = {}; }
 
-  #parts(u) { return u.boss ? u.parts.imgs : [u.parts.wings2, u.parts.body, u.parts.legs, u.parts.head, u.parts.wings].filter(Boolean); }
+  #parts(u) { return u.boss ? u.parts.imgs : [u.parts.body, u.parts.legs, u.parts.head, u.parts.wings].filter(Boolean); }
   #setTint(u, c) { u.tint = c; this.#applyTint(u); }
   #applyTint(u) {
     const imgs = this.#parts(u);

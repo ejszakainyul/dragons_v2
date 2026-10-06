@@ -1601,7 +1601,7 @@ function loadImage(url) {
  * fejmozdulat) a rögzített csatlakozási pontok körül.
  */
 export async function dragonTextures(scene, dragon, catalog, size = 256) {
-  // Minden sárkány saját „bőrt" kap (skins.js): minta, kéttónusú szín, elemi díszek, kiegészítők
+  // A szín a skins.js-ből: saját szín, a has felé világosabb
   const look = dragonLook(dragon, catalog);
   const keys = { look };
   await Promise.all(SLOTS.map(async (slot) => {
@@ -1625,27 +1625,12 @@ export async function dragonTextures(scene, dragon, catalog, size = 256) {
 export function dragonPortrait(scene, keys, size = 72) {
   const c = canvas(size, size);
   const ctx = c.getContext('2d');
-  // Ugyanúgy, mint a jelenetben: arányok, a fej és a szárny a csatlakozási pontja körül méretezve
-  const L = keys.look || {};
-  const P = keys.look ? SKIN_PAD : 0;
-  const z = 0.86;                                         // kicsit kisebb, hogy a díszek is beférjenek
-  const sx = (L.sx || 1) * z, sy = (L.sy || 1) * z;
-  const draw = (slot, px, py, k, rot = 0, dark = false) => {
-    if (!keys[slot]) return;
+  const P = keys.look ? SKIN_PAD : 0;                     // a festett textúráknak keskeny pereme van
+  for (const slot of ['test', 'lab', 'fej', 'szarny']) {
+    if (!keys[slot]) continue;
     const src = scene.textures.get(keys[slot]).getSourceImage();
-    const ax = size / 2 + (px - 0.5) * size * sx, ay = size / 2 + (py - 0.5) * size * sy + (58 / 64 - 0.5) * size * (1 - sy);
-    const w = size * sx * k, h = size * sy * k;
-    ctx.save();
-    ctx.translate(ax, ay); ctx.rotate(rot);
-    if (dark) ctx.filter = 'brightness(0.7)';
-    ctx.drawImage(src, -(px + P) * w, -(py + P) * h, w * (1 + 2 * P), h * (1 + 2 * P));
-    ctx.restore();
-  };
-  if (L.extraWings) draw('szarny', 36 / 64 + 0.05, 27 / 64, (L.wingScale || 1) * 0.86, -0.42, true);
-  draw('test', 0.5, 0.5, 1);
-  draw('lab', 0.5, 0.5, 1);
-  draw('fej', 26 / 64, 20 / 64, L.headScale || 1);
-  draw('szarny', 36 / 64, 27 / 64, L.wingScale || 1);
+    ctx.drawImage(src, -P * size, -P * size, size * (1 + 2 * P), size * (1 + 2 * P));
+  }
   return c;
 }
 
@@ -1659,28 +1644,20 @@ export function makeDragonView(scene, keys, displaySize) {
   const inner = scene.add.container(0, 0);        // ezt tükrözzük irány szerint
   cont.add(inner);
   const S = displaySize;
-  // Arányok sárkányonként (skins.js): nyúlánk vagy zömök test, nagyobb/kisebb fej
-  // és szárny. A talppont (a rácson ~58/64) helyben marad.
-  const L = keys.look || {};
-  const sx = L.sx || 1, sy = L.sy || 1;
-  const ground = (58 / 64 - 0.5) * S * (1 - sy);
-  const P = keys.look ? SKIN_PAD : 0;                      // a bőrös textúráknak pereme van
-  const part = (slot, ox, oy, k = 1) => {
+  const P = keys.look ? SKIN_PAD : 0;
+  const part = (slot, ox, oy) => {
     if (!keys[slot]) return null;
-    const img = scene.add.image((ox - 0.5) * S * sx, (oy - 0.5) * S * sy + ground, keys[slot])
+    const img = scene.add.image((ox - 0.5) * S, (oy - 0.5) * S, keys[slot])
       .setOrigin((ox + P) / (1 + 2 * P), (oy + P) / (1 + 2 * P))
-      .setDisplaySize(S * sx * k * (1 + 2 * P), S * sy * k * (1 + 2 * P));
+      .setDisplaySize(S * (1 + 2 * P), S * (1 + 2 * P));
     inner.add(img);
     return img;
   };
-  // Négyszárnyú fajtáknál a hátsó szárnypár a test mögött, sötétebben, hátrébb döntve
-  const wings2 = L.extraWings ? part('szarny', 36 / 64, 27 / 64, (L.wingScale || 1) * 0.86) : null;
-  if (wings2) { wings2.setTint(0x9a90b8).setRotation(-0.42); wings2.x += S * 0.05; }
   const body  = part('test', 0.5, 0.5);
   const legs  = part('lab', 0.5, 0.5);
-  const head  = part('fej', 26 / 64, 20 / 64, L.headScale || 1);
-  const wings = part('szarny', 36 / 64, 27 / 64, L.wingScale || 1);
-  cont.setData('parts', { body, legs, head, wings, wings2, inner });
+  const head  = part('fej', 26 / 64, 20 / 64);
+  const wings = part('szarny', 36 / 64, 27 / 64);
+  cont.setData('parts', { body, legs, head, wings, inner });
   return cont;
 }
 

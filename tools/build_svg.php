@@ -25,6 +25,7 @@
  */
 
 require __DIR__ . '/svglib.php';
+require __DIR__ . '/draw_kit.php';
 require __DIR__ . '/parts_table.php';
 require __DIR__ . '/draw_parts.php';
 require __DIR__ . '/draw_head.php';
