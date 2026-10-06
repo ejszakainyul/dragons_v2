@@ -17,7 +17,8 @@ import { findPath } from './path.js';
 import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING } from './art.js';
 import { peakSpots } from './terrain.js';
 import { fringeLayers } from './tiles.js';
-import { CAVES, SKILLS, levelOf, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
+import { CAVES, SKILLS, levelOf, xpForLevel, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
+import { DayNight } from './daynight.js';
 import { esc } from './hud.js';
 import { LORE } from './lore.js';
 import { Trainer } from './trainer.js';
@@ -103,6 +104,12 @@ export class OverworldScene extends Phaser.Scene {
     this.keys = kb.addKeys('W,A,S,D,E,UP,DOWN,LEFT,RIGHT,SPACE,ENTER,SHIFT', false);
     kb.clearCaptures();            // a párbeszédablakok mezőibe lehessen gépelni
     kb.on('keydown', (e) => {
+      // M: világtérkép (nyitja/zárja)
+      if (e.key === 'm' || e.key === 'M') {
+        if (hud.worldMapOpen) hud.closeModal();
+        else if (!hud.modalOpen) { this.g.sfx.click(); hud.openWorldMap(); }
+        return;
+      }
       if (hud.modalOpen) return;
       // A párbeszédet lezáró billentyű ne nyisson rögtön új ablakot
       if (performance.now() - (this.g.story?.dialogue.closedAt || 0) < 300) return;
@@ -117,8 +124,15 @@ export class OverworldScene extends Phaser.Scene {
     /* --- Hangulat --- */
     this.#ambient();
     this.#questMarker();
+    this.daynight = new DayNight(this, this.g);
 
-    hud.initMinimap(world, (x, y) => this.#goTo(x, y));
+    hud.initMinimap(world, (x, y) => this.#goTo(x, y), (p) => this.#poiName(p));
+    hud.mapState = () => this.player && {
+      fog: this.fogBits, cleared: state.save.cleared, target: this.g.story?.target, heading: this.heading,
+      px: this.player.x / TILE - 0.5, py: (this.player.y - TILE / 2) / TILE,
+    };
+    this.heading = -Math.PI / 2;
+    this.mmAt = 0;
     this.lastTile = null;
     this.path = null;
     this.pendingPoi = null;
@@ -487,6 +501,8 @@ export class OverworldScene extends Phaser.Scene {
       if (Math.hypot(px - c.x, py - c.y) < 9) break;
       const tier = this.#roamTier(c.x, c.y);
       const d = makeRoamer(tier, this.g.state.tiers);
+      // Éjjel az éji vadak járnak: két szinttel erősebbek, de másfélszeres a zsákmány
+      if (this.daynight?.isNight) { d.night = true; d.nev = `Éji ${d.nev}`; d.xp = xpForLevel(levelOf(d.xp) + 2); }
       const keys = await dragonTextures(this.g.gfx, d, this.g.state.catalog, 128);
       if (!this.scene.isActive() && !this.scene.isSleeping()) return;
       const view = makeDragonView(this, keys, 76);
@@ -496,7 +512,7 @@ export class OverworldScene extends Phaser.Scene {
       cont.add([shadow, view]);
       const parts = view.getData('parts');
       const tag = this.add.text(0, -86, `${d.nev} · ${tier}. fok`, {
-        fontFamily: 'Cinzel, Georgia, serif', fontSize: '11px', fontStyle: '700', color: '#ffc2c2', stroke: '#0b0f1c', strokeThickness: 4,
+        fontFamily: 'Cinzel, Georgia, serif', fontSize: '11px', fontStyle: '700', color: d.night ? '#d8b8ff' : '#ffc2c2', stroke: '#0b0f1c', strokeThickness: 4,
       }).setOrigin(0.5);
       const alert = this.add.text(0, -104, '!', { fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: '900', color: '#ff5d6c', stroke: '#0b0f1c', strokeThickness: 5 }).setOrigin(0.5).setVisible(false);
       cont.add([tag, alert]);
@@ -565,7 +581,7 @@ export class OverworldScene extends Phaser.Scene {
     cam.once('camerafadeoutcomplete', () => {
       this.scene.sleep();
       this.scene.launch('battle', {
-        g: this.g, mode: 'roam', tier: r.tier, foes: [r.d], field, roamId: r.d.id,
+        g: this.g, mode: 'roam', tier: r.tier, foes: [r.d], field, roamId: r.d.id, night: !!r.d.night,
         title: 'Vad sárkány!', sub: `${r.d.nev} — ${r.tier}. fokú vadon`,
       });
     });
@@ -907,6 +923,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.ready || !this.avatar) return;
     const { hud, state } = this.g;
     const dt = Math.min(delta, 50) / 1000;
+    this.daynight?.update(time);
 
     let vx = 0, vy = 0;
     if (!hud.modalOpen) {
@@ -946,6 +963,7 @@ export class OverworldScene extends Phaser.Scene {
       if (!this.#collides(this.player.x, ny)) this.player.y = ny;
       // A rajz balra néz: jobbra haladva tükrözzük
       if (Math.abs(vx) > 0.2) this.avatarParts.inner.scaleX = vx > 0 ? -1 : 1;
+      this.heading = Math.atan2(vy, vx);
       // Porfelhő a lába nyomán (földön), szélcsík a szárnya mögött (repülve)
       if (time > this.dustAt) {
         this.dustAt = time + (this.soar > 0.5 ? 70 : 140);
@@ -965,6 +983,11 @@ export class OverworldScene extends Phaser.Scene {
     this.#updateSheep(dt);
     this.#updateWanderer(time);
     this.#updateRoamers(time, dt);
+    // Kistérkép: tízszer másodpercenként, tört koordinátával (simán gördül)
+    if (time > this.mmAt) {
+      this.mmAt = time + 100;
+      hud.drawMinimap(this.fogBits, this.player.x / TILE - 0.5, (this.player.y - TILE / 2) / TILE, this.world.pois, state.save.cleared, this.g.story?.target, this.heading);
+    }
 
     // Új csempére lépett?
     const [tx, ty] = this.#tileOf();
@@ -972,6 +995,7 @@ export class OverworldScene extends Phaser.Scene {
     if (key !== this.lastTile) {
       this.lastTile = key;
       this.#reveal(tx, ty);
+      hud.fogChanged();
       state.save.pos = { x: tx, y: ty };
       state.dirty = true;
       this.#checkHerb(tx, ty);
@@ -1011,6 +1035,15 @@ export class OverworldScene extends Phaser.Scene {
     const col = this.world.snowy[i] ? 0xeef4fc : this.world.ashy[i] ? 0x6b5a5e : this.world.biome[i] === B.SAND ? 0xd6c49a : 0xb9a68a;
     const puff = this.add.image(x + (Math.random() - 0.5) * 10, y, 'fx-smoke').setTint(col).setScale(0.25).setAlpha(0.55).setDepth(this.player.depth - 1);
     this.tweens.add({ targets: puff, scale: 0.6, alpha: 0, y: y - 6, x: puff.x - vx * 8, duration: 520, onComplete: () => puff.destroy() });
+  }
+
+  /** Helyszín neve a világtérképre. */
+  #poiName(p) {
+    if (p.name) return p.name;
+    if (p.type === 'cave') return `${ROMAN[p.tier]}. ${CAVES[p.tier].name}`;
+    if ((p.type === 'shrine' || p.type === 'npc' || p.type === 'ruins') && PLACES[p.place]) return PLACES[p.place].name;
+    if (p.type === 'stone') return 'Rúnakő';
+    return '';
   }
 
   #updateArea(tx, ty) {
@@ -1272,6 +1305,7 @@ export class OverworldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.#fitZoom();
     cam.startFollow(this.player, true, 0.12, 0.12);
+    this.daynight?.syncMusic(true);
     if (result?.defeat) {
       // Elájult csapat: a hosszúházban tér magához
       this.player.setPosition(this.world.start.x * TILE + TILE / 2, this.world.start.y * TILE + TILE - 6);

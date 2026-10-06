@@ -33,7 +33,6 @@ body.game-page .site-footer { display: none; }
 .hud-panel,
 .hud-dragon,
 .hud-chip,
-.hud-minimap,
 .battle-panel {
   background: linear-gradient(180deg, rgba(34, 44, 74, .92), rgba(9, 13, 26, .94));
   border: 1px solid rgba(138, 150, 184, .32);
@@ -144,17 +143,80 @@ body.game-page .site-footer { display: none; }
 }
 
 /* --- Kistérkép (jobb alul) ------------------------------------------- */
-.hud-minimap {
+.hud-map {
   position: absolute;
   right: 14px;
   bottom: 14px;
-  width: 200px;
-  height: 150px;
-  padding: 4px;
-  border-radius: 10px;
-  image-rendering: pixelated;
-  cursor: crosshair;
+  width: 236px;
+  height: 177px;
+  padding: 5px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #6b5a3e, #2c2418 45%, #4a3c28);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 220, 160, .25);
+  pointer-events: auto;
 }
+.hud-minimap {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  cursor: crosshair;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .6);
+  background: #0a0c16;
+}
+.hud-map::after {   /* belső árnyék a térkép peremén */
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 10px 1px rgba(6, 8, 16, .45), inset 0 0 0 1px rgba(0, 0, 0, .6);
+  pointer-events: none;
+}
+.hud-map-n {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f4d9a0, #9a7440);
+  color: #2a1a0a;
+  font: 700 .72rem Cinzel, serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+  pointer-events: none;
+  z-index: 1;
+}
+.hud-map-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 220, 160, .45);
+  background: rgba(20, 16, 10, .78);
+  color: #f4d9a0;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.hud-map-btn:hover { background: rgba(60, 44, 24, .9); color: #fff; }
+/* Világtérkép a párbeszédablakban */
+.wm-wrap { border-radius: 12px; overflow: hidden; border: 3px solid #5a4a32; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+.wm-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.wm-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: .82rem; color: var(--muted); }
+.wm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.wm-legend i { display: inline-block; width: 12px; height: 12px; border: 2px solid #0b0f1c; border-radius: 3px; }
+.lg-cave { background: #ff5d6c; border-radius: 6px 6px 2px 2px !important; }
+.lg-cave.is-done { background: #5ed49a; }
+.lg-home { background: #ff8a3d; }
+.lg-shrine { background: #c28cff; transform: rotate(45deg); }
+.lg-nest { background: #ffe0a8; border-radius: 50% !important; }
+.lg-stone { background: #6fffe6; }
+.lg-npc { background: #ffe7c2; border-radius: 50% !important; }
+.lg-target { background: transparent; border-color: #ffd08a !important; border-radius: 50% !important; }
+.wm-hint { margin: 8px 0 0; font-size: .8rem; }
 
 /* --- Felszólítás (alul középen) -------------------------------------- */
 .hud-prompt {
@@ -211,7 +273,7 @@ kbd {
 .hud-toast small { display: block; color: var(--muted); }
 
 /* Harc közben a völgy felülete elrejtőzik */
-.game-shell.in-battle .hud-minimap,
+.game-shell.in-battle .hud-map,
 .game-shell.in-battle .hud-prompt,
 .game-shell.in-battle .hud-area,
 .game-shell.in-battle .hud-quest,
@@ -496,7 +558,8 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
   .hud-res { top: 8px; right: 8px; gap: 5px; flex-direction: column; align-items: flex-end; }
   .hud-chip { padding: 5px 9px; font-size: .85rem; }
   .hud-icon-btn { width: 34px; height: 34px; }
-  .hud-minimap { width: 128px; height: 96px; right: 8px; bottom: 8px; }
+  .hud-map { width: 150px; height: 113px; right: 8px; bottom: 8px; padding: 4px; }
+  .hud-map-btn { top: 7px; right: 7px; width: 24px; height: 24px; font-size: .85rem; }
   .hud-area { top: auto; bottom: 172px; font-size: 1rem; }
   .hud-prompt { bottom: 116px; }
   .battle-panel { bottom: 6px; padding: 8px; }
@@ -1206,3 +1269,6 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
   .es-stats { gap: 6px; }
   .es-credits { height: 48px; }
 }
+.hud-icon-btn.is-off { opacity: .45; text-decoration: line-through; }
+.hud-clock b { color: #dfe6ff; font-size: .82rem; white-space: nowrap; }
+@media (max-width: 640px) { .hud-clock { display: none; } }

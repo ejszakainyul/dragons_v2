@@ -54,6 +54,7 @@ const DEFAULT_SAVE = () => ({
   stones: {},
   stats: { battles: 0, wins: 0, tamed: 0, hatched: 0, spars: 0, drills: 0 },
   muted: false,
+  music: true,              // háttérzene (külön kapcsolható)
   story: null,              // a saga állása (story.js tölti ki)
   learned: {},              // sárkány-id → tanult technikák
   train: {},                // sárkány-id → edzésfokozatok {atk, def, spd, hp}

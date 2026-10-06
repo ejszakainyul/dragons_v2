@@ -53,6 +53,7 @@ export class BattleScene extends Phaser.Scene {
     this.fieldKind = data.field || 'meadow';
     this.placeId = data.placeId || null;
     this.roamId = data.roamId || null;
+    this.night = !!data.night;               // éji vad: másfélszeres zsákmány
     this.tier = this.spar ? 0 : this.field ? (data.tier || 1) : data.tier;
     const FIELD_COL = { meadow: 0x9dffc9, forest: 0xd8ff8a, snow: 0xe8fffb, ash: 0xff8a3d, shore: 0x9fe8ff };
     this.cave = this.spar ? { name: 'Ragnhild karámja', color: 0xffb36b, waves: [this.sparCfg.count] }
@@ -95,6 +96,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
+    this.g.music?.play(this.mode === 'cave' && this.tier === 5 ? 'boss' : 'battle');
 
     // A csapat — az elájultak nem jönnek be
     const allies = state.party.filter((d) => state.hpOf(d) > 0);
@@ -193,6 +195,21 @@ export class BattleScene extends Phaser.Scene {
         scale: { start: 0.1, end: 0 }, tint: [0xffc46b, 0xff8a3d], blendMode: 'ADD', frequency: 120, maxAliveParticles: 20,
       }).setDepth(-5));
       return;
+    }
+
+    // A barlang saját mozgó hangulata (fokozatonként)
+    const tierFx = {
+      1: { y: 0, speedY: { min: 160, max: 260 }, speedX: 0, scale: { min: 0.05, max: 0.09 }, tint: 0xbff0ff, alpha: { start: 0.8, end: 0.3 }, lifespan: 1800, frequency: 260 },
+      2: { y: -10, speedY: { min: 14, max: 40 }, speedX: { min: -14, max: 8 }, scale: { min: 0.05, max: 0.13 }, tint: 0xe8fbff, alpha: { start: 0.95, end: 0 }, lifespan: 7000, frequency: 90 },
+      3: { y: h, speedY: { min: -36, max: -12 }, speedX: { min: -8, max: 8 }, scale: { start: 0.16, end: 0 }, tint: [0xc9a0ff, 0xe8d0ff], alpha: { start: 0.9, end: 0 }, lifespan: 5200, frequency: 140 },
+      4: { y: h, speedY: { min: -110, max: -40 }, speedX: { min: -24, max: 24 }, scale: { start: 0.17, end: 0 }, tint: [0xff8a3d, 0xffc46b, 0xff5a2a], alpha: { start: 1, end: 0 }, lifespan: 3000, frequency: 55 },
+      5: { y: h * 0.4, speedY: { min: -14, max: 14 }, speedX: { min: -14, max: 14 }, scale: { start: 0.14, end: 0.02 }, tint: [0xffd36b, 0xfff0b0], alpha: { start: 0.9, end: 0 }, lifespan: 6000, frequency: 120 },
+    }[this.tier];
+    if (tierFx) {
+      keep(this.add.particles(0, 0, 'fx-dot', {
+        x: { min: 0, max: w }, ...tierFx, ...(this.tier === 5 ? { y: { min: h * 0.1, max: h * 0.8 } } : {}),
+        blendMode: 'ADD', maxAliveParticles: 60,
+      }).setDepth(this.tier === 2 || this.tier === 1 ? 9600 : -5));
     }
 
     // Fénysugarak a mennyezet repedéseiből
@@ -2834,8 +2851,10 @@ export class BattleScene extends Phaser.Scene {
     const firstClear = cave && !state.save.cleared[this.tier];
     const bonus = cave ? (firstClear ? caveBonus(this.tier) : Math.round(caveBonus(this.tier) / 4)) : 0;
     const base = this.spar || this.mode === 'guardian' ? 0 : this.defeated.reduce((s, u) => s + shardsFor(u.stats.level), 0) + bonus;
-    const shards = Math.round(base * (this.relics.has('draupnir') ? 1 + RELICS.draupnir.shards : 1));
-    const xpTotal = this.defeated.reduce((s, u) => s + xpFor(u.stats.level), 0) * (this.spar ? 0.5 : this.mode === 'guardian' ? 0.8 : 1);
+    const nightK = this.night ? 1.5 : 1;
+    const shards = Math.round(base * nightK * (this.relics.has('draupnir') ? 1 + RELICS.draupnir.shards : 1));
+    const xpTotal = this.defeated.reduce((s, u) => s + xpFor(u.stats.level), 0) * (this.spar ? 0.5 : this.mode === 'guardian' ? 0.8 : 1) * nightK;
+    if (this.night) hud.toast('🌙 Éji vad legyőzve — másfélszeres zsákmány!', 'good', 4000);
     state.save.shards += shards;
     if (this.spar) state.save.stats.spars++;
     else if (cave) { state.save.cleared[this.tier] = true; state.save.stats.wins++; }

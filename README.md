@@ -276,6 +276,8 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
 | `script/game/art.js` | minden grafika kódból (épületek, helyszínek, effektek, sárkánynézet) |
 | `script/game/skins.js` | a sárkányrészek színezése, fajtanév |
+| `script/game/music.js` | saját zene WebAudio-szintézissel (völgy, éjszaka, csata, boss) |
+| `script/game/daynight.js` | napszakok: közös világóra, éjjeli fények, éji vadak |
 | `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
 | `script/game/terrain.js` | árnyalt hegycsúcsok a hegyvidékben (egy textúralapon) |
 | `script/game/hud.js`, `state.js`, `sfx.js`, `path.js`, `lore.js` | felület, mentés, hangok, A*, rúnakövek |
@@ -308,6 +310,30 @@ szomszéd anyaga hullámos, puha széllel, enyhe árnyékkal lóg át (hó a fű
 fű az ösvényre…). A partokon homok, nedves sáv, hab és sekély víz, lekerekített
 sarkokkal. A fák és sziklák árnyéka a képükbe van rajzolva; a hegyvidékben
 árnyalt, havas csúcsok (`terrain.js`).
+
+**Zene:** négy saját szerzemény, hangfájl nélkül, a böngészőben szintetizálva
+(`music.js`): „A Völgy dala" (lant-arpeggio, furulya, keretdob, orgonapont),
+ugyanez éjjeli változatban, „Pajzsfal" a csatákhoz (taikó, vonós ostinato,
+kürt) és „Níðhöggr ébredése" (frigiai fordulat, mély kórus, nehéz dobok).
+Darabváltáskor áttűnik; a ♫ gombbal külön kikapcsolható.
+
+**Napszakok:** a völgyben egy nap 12 perc, a valódi órához igazítva — minden
+játékosnál egyszerre van éjfél. Alkonyatkor narancs, éjjel mélykék a fény;
+kigyulladnak a hosszúház, a tábortűz, a kohó és a szentélyek fényei, a
+sárkányod körül lámpásfény dereng. Éjjel „éji vadak" járnak: két szinttel
+erősebbek, de másfélszeres zsákmányt adnak. Az óra a felső sávban látszik.
+
+**Térkép:** a kistérkép festett hatású (domborzati árnyék, mély és sekély víz,
+hab, utak, fák, hegycsúcsok), a játékos körül gördül, irányjelző nyíllal; a
+saga célja a peremén nyíllal jelez, ha kívül esik. **M** (vagy a ⛶ gomb):
+teljes világtérkép nevekkel és jelmagyarázattal — kattintásra odaindulsz.
+
+**Barlangok a csatában:** rétegzett, festett mélység — a messzi csarnok
+fénye, három sziklakulissza peremfénnyel, és fokozatonként saját látvány:
+mohás vízesés világító gombákkal, befagyott vízesés jégcsapokkal,
+ametisztfürtök és rúnaoszlop, lávató lávazuhataggal és bazaltoszlopokkal,
+Níðhöggr barlangjában Yggdrasil elágazó gyökerei arany nedvvel. Mindegyikhez
+saját mozgó hangulat (csöppek, hószikra, fényszemcsék, parázs, spórák).
 
 **Helyszínek:** a hosszúház (csónakgerinc-ívű zsindelytető mohával, sárkányfejes
 oromdeszkák, festett pajzsok, lámpások), a kunyhó, a kovácsműhely, a barlang,

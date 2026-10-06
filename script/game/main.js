@@ -14,6 +14,7 @@
 import { Api, GameState } from './state.js';
 import { Hud, esc } from './hud.js';
 import { GameSfx } from './sfx.js';
+import { GameMusic } from './music.js';
 import { generateWorld } from './world.js';
 import { buildTileset, buildSprites, dragonTextures, dragonPortrait } from './art.js';
 import { OverworldScene } from './overworld.js';
@@ -118,11 +119,13 @@ async function boot() {
   const sfx = new GameSfx();
   sfx.setMuted(!!state.save.muted);
   const hud = new Hud(shell, state, sfx);
-  const g = { api, state, hud, sfx };
+  const music = new GameMusic(sfx, state);
+  hud.attachMusic(music);
+  const g = { api, state, hud, sfx, music };
   window.__kaland = g;               // fejlesztői fogantyú: a konzolból elérhető állapot
 
   // A hang csak felhasználói gesztus után indulhat
-  const unlock = () => sfx.unlock();
+  const unlock = () => { sfx.unlock(); music.resume(); };
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
 

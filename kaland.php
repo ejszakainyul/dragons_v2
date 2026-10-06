@@ -38,6 +38,7 @@ foreach (glob(__DIR__ . '/script/game/*.js') ?: [] as $file) {
     </div>
 
     <div class="hud-res">
+      <span class="hud-chip hud-clock" id="hudClock" title="A völgy órája"><b>☀ Nappal</b></span>
       <span class="hud-chip" title="Rúnaszilánk — ebből fizetsz a tojásrakásért és a szelídítésért">
         <i class="hud-rune">ᚱ</i><b id="hudShards">0</b>
       </span>
@@ -45,12 +46,17 @@ foreach (glob(__DIR__ . '/script/game/*.js') ?: [] as $file) {
         <i>🌿</i><b id="hudHerbs">0</b>
       </span>
       <button class="hud-icon-btn" id="hudBook" type="button" title="Krónika: a saga és a mellékszálak"><span class="rune-ico">ᛉ</span></button>
+      <button class="hud-icon-btn" id="hudMusic" type="button" aria-label="Zene ki" title="Zene be/ki">♫</button>
       <button class="hud-icon-btn" id="hudMute" type="button" aria-label="Hang ki">🔊</button>
       <a class="hud-icon-btn" href="user.php" title="A gyűjteményed (profil)"><span class="rune-ico">ᛗ</span></a>
     </div>
 
     <div class="hud-area" id="hudArea" aria-live="polite"></div>
-    <canvas class="hud-minimap" id="hudMinimap" title="Kistérkép — kattints, és oda indulsz"></canvas>
+    <div class="hud-map">
+      <canvas class="hud-minimap" id="hudMinimap" title="Kistérkép — kattints, és oda indulsz"></canvas>
+      <span class="hud-map-n" aria-hidden="true">É</span>
+      <button class="hud-map-btn" id="hudMapBtn" type="button" title="Világtérkép (M)">⛶</button>
+    </div>
     <div class="hud-prompt" id="hudPrompt" hidden></div>
     <div class="hud-compass" id="hudCompass" hidden aria-hidden="true"><i></i></div>
     <div class="hud-toasts" id="hudToasts" aria-live="polite"></div>

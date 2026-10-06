@@ -1665,74 +1665,277 @@ export function makeDragonView(scene, keys, displaySize) {
    Barlangi háttér a csatához
    ===================================================================== */
 const CAVE_LOOK = {
-  1: { wall: ['#16241c', '#0b120e'], rock: '#2c4436', crystal: '#7bffb0', mist: 'rgba(120,255,170,.06)' },
-  2: { wall: ['#122238', '#070d18'], rock: '#2e4a6a', crystal: '#9fe8ff', mist: 'rgba(160,220,255,.07)' },
-  3: { wall: ['#1c1430', '#0a0714'], rock: '#3a2c5a', crystal: '#c9a0ff', mist: 'rgba(190,150,255,.07)' },
-  4: { wall: ['#2a1210', '#120606'], rock: '#4a2620', crystal: '#ff8a3d', mist: 'rgba(255,120,60,.08)' },
-  5: { wall: ['#0e0b14', '#040306'], rock: '#241c30', crystal: '#ffd36b', mist: 'rgba(255,210,120,.05)' },
+  1: { theme: 'moss',     top: '#040a07', deep: '#1f4634', layers: ['#16342a', '#0e221a', '#07130e'], rim: '#8affc0', glow: '#9dffc9', floor: ['#2c3e30', '#0a110c'] },
+  2: { theme: 'ice',      top: '#040912', deep: '#36608a', layers: ['#223f5e', '#142840', '#0a1626'], rim: '#cdeeff', glow: '#9fe8ff', floor: ['#41546e', '#0a1018'] },
+  3: { theme: 'amethyst', top: '#06040c', deep: '#43307a', layers: ['#2c2052', '#1c1436', '#0f0a1e'], rim: '#dcb4ff', glow: '#c9a0ff', floor: ['#30284a', '#08060e'] },
+  4: { theme: 'lava',     top: '#0a0303', deep: '#7a2a10', layers: ['#3e1a10', '#26100a', '#140706'], rim: '#ffa060', glow: '#ff7a2c', floor: ['#3c2622', '#0a0505'] },
+  5: { theme: 'roots',    top: '#040306', deep: '#3e2e1a', layers: ['#2a1f30', '#1a1220', '#0c0812'], rim: '#ffd36b', glow: '#ffd36b', floor: ['#2c2432', '#050407'] },
 };
 
+/**
+ * Barlang a csatához — festett, rétegzett mélység:
+ * háttérfény a messzi csarnokból → három sziklakulissza (egyre közelebb,
+ * egyre sötétebb, peremfénnyel) → a fokozat saját látványa (vízesés,
+ * jégfolyam, ametisztfürt, lávató, Yggdrasil-gyökerek) → kőpadló →
+ * előtér-sziluettek, köd, vignetta. Egyszer készül, futás közben nem költ.
+ */
 export function caveBackdrop(scene, tier, w, h) {
-  const key = `cavebg:${tier}:${w}x${h}`;
+  const key = `cavebg2:${tier}:${w}x${h}`;
   if (scene.textures.exists(key)) return key;
-  const look = CAVE_LOOK[tier] || CAVE_LOOK[1];
-  const rng = mulberry32(tier * 999);
+  const L = CAVE_LOOK[tier] || CAVE_LOOK[1];
+  const rng = mulberry32(tier * 999 + 7);
   const c = canvas(w, h);
   const ctx = c.getContext('2d');
-
-  ctx.fillStyle = vgrad(ctx, 0, h, [[0, look.wall[1]], [0.55, look.wall[0]], [1, look.wall[1]]]);
-  ctx.fillRect(0, 0, w, h);
-
-  // Hátsó sziklafal tömbök
-  for (let i = 0; i < 26; i++) {
-    const x = rng() * w, y = h * 0.1 + rng() * h * 0.5, r = 40 + rng() * 120;
-    ctx.fillStyle = `rgba(0,0,0,${0.15 + rng() * 0.25})`;
-    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.6, rng(), 0, 7); ctx.fill();
-  }
-
-  // Kristályfény foltok
-  for (let i = 0; i < 7; i++) {
-    const x = rng() * w, y = h * 0.2 + rng() * h * 0.45;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, 90);
-    g.addColorStop(0, hexA(look.crystal, 0.22)); g.addColorStop(1, hexA(look.crystal, 0));
-    ctx.fillStyle = g; ctx.fillRect(x - 90, y - 90, 180, 180);
-    // maga a kristály
-    ctx.fillStyle = hexA(look.crystal, 0.85); ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    const cs = 8 + rng() * 14;
-    ctx.beginPath(); ctx.moveTo(x, y - cs * 2); ctx.lineTo(x + cs * 0.6, y); ctx.lineTo(x, y + cs * 0.4); ctx.lineTo(x - cs * 0.6, y); ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-
-  // Cseppkövek felül
-  for (let x = -10; x < w + 10; x += 18 + rng() * 30) {
-    const len = 30 + rng() * h * 0.2, wid = 14 + rng() * 26;
-    ctx.fillStyle = vgrad(ctx, 0, len, [[0, look.rock], [1, look.wall[1]]]);
-    ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x - wid / 2, -2); ctx.quadraticCurveTo(x - wid * 0.1, len * 0.6, x, len); ctx.quadraticCurveTo(x + wid * 0.1, len * 0.6, x + wid / 2, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-
-  // Talaj: egyenetlen kőpadló, a sárkányok ezen állnak
   const floorY = h * 0.72;
-  ctx.fillStyle = vgrad(ctx, floorY - 20, h, [[0, look.rock], [1, '#050507']]);
-  ctx.beginPath(); ctx.moveTo(0, h);
-  for (let x = 0; x <= w; x += 30) ctx.lineTo(x, floorY - 14 + Math.sin(x / 90) * 10 + rng() * 8);
-  ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 2; ctx.stroke();
+  const glowAt = (x, y, r, col, a) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, hexA(col, a)); g.addColorStop(1, hexA(col, 0));
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  };
 
-  // Cseppkövek alul, a két szélén (keretezés)
-  for (const side of [0, 1]) for (let i = 0; i < 4; i++) {
-    const x = side ? w - 20 - i * 40 - rng() * 20 : 20 + i * 40 + rng() * 20;
-    const hh = 40 + rng() * 90 - i * 12;
-    ctx.fillStyle = look.rock; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x - 16, h); ctx.lineTo(x, h - hh); ctx.lineTo(x + 16, h); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // 1. Mélység: sötét boltozat, a messzi csarnok fénye középen
+  ctx.fillStyle = vgrad(ctx, 0, h, [[0, L.top], [0.5, L.deep], [0.72, L.layers[0]], [1, L.top]]);
+  ctx.fillRect(0, 0, w, h);
+  glowAt(w * 0.5, h * 0.52, Math.max(w, h) * 0.42, L.glow, 0.28);
+
+  /** Sziklakulissza: bal és jobb tömb + mennyezetsáv, csipkés belső éllel, peremfénnyel. */
+  const curtain = (inner, ceil, col, rimA, jag) => {
+    const edge = (side) => {
+      const pts = [];
+      const x0 = side ? w * (1 - inner) : w * inner;
+      for (let y = -10; y <= floorY + 30; y += 18 + rng() * 14) {
+        const bulge = Math.sin((y / h) * Math.PI * (1.2 + rng() * 0.3)) * w * 0.05;
+        pts.push([x0 + (side ? -1 : 1) * (bulge + (rng() - 0.5) * jag), y]);
+      }
+      return pts;
+    };
+    const ceilPts = [];
+    for (let x = -10; x <= w + 10; x += 22 + rng() * 18) ceilPts.push([x, h * ceil + Math.sin((x / w) * Math.PI) * h * 0.05 + (rng() - 0.5) * jag * 0.8]);
+    ctx.fillStyle = col;
+    for (const side of [0, 1]) {
+      const e = edge(side);
+      ctx.beginPath();
+      ctx.moveTo(side ? w + 10 : -10, -10);
+      for (const [x, y] of e) ctx.lineTo(x, y);
+      ctx.lineTo(side ? w + 10 : -10, floorY + 40);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = hexA(L.rim, rimA); ctx.lineWidth = 2;
+      ctx.beginPath(); e.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(-10, -10);
+    for (const [x, y] of ceilPts) ctx.lineTo(x, y);
+    ctx.lineTo(w + 10, -10); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexA(L.rim, rimA * 0.7); ctx.lineWidth = 2;
+    ctx.beginPath(); ceilPts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    return ceilPts;
+  };
+
+  /** Cseppkő a mennyezetről, kétoldalt árnyalva. */
+  const stalactite = (x, y0, len, wid, col, rimA) => {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(x - wid / 2, y0 - 4); ctx.quadraticCurveTo(x - wid * 0.12, y0 + len * 0.6, x, y0 + len);
+    ctx.quadraticCurveTo(x + wid * 0.12, y0 + len * 0.6, x + wid / 2, y0 - 4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexA(L.rim, rimA); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x - wid / 2, y0); ctx.quadraticCurveTo(x - wid * 0.12, y0 + len * 0.6, x, y0 + len); ctx.stroke();
+  };
+
+  // 2. A fokozat saját háttérlátványa (a legtávolabbi kulissza mögött)
+  const T = L.theme;
+  if (T === 'moss' || T === 'ice') {
+    // vízesés (jégnél befagyott) a csarnok mélyén
+    const wx = w * (0.5 + (rng() - 0.5) * 0.1), ww = w * 0.05;
+    const fall = ctx.createLinearGradient(0, h * 0.18, 0, floorY);
+    fall.addColorStop(0, hexA(T === 'ice' ? '#e8f8ff' : '#bff0ff', 0.1)); fall.addColorStop(0.3, hexA(T === 'ice' ? '#cdeeff' : '#9fe8ff', 0.55)); fall.addColorStop(1, hexA('#ffffff', 0.7));
+    ctx.fillStyle = fall;
+    ctx.beginPath(); ctx.moveTo(wx - ww * 0.6, h * 0.18); ctx.lineTo(wx + ww * 0.6, h * 0.18); ctx.lineTo(wx + ww, floorY - 6); ctx.lineTo(wx - ww, floorY - 6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexA('#ffffff', T === 'ice' ? 0.55 : 0.35); ctx.lineWidth = 1.2;
+    for (let i = 0; i < 9; i++) { const x = wx - ww * 0.8 + rng() * ww * 1.6; ctx.beginPath(); ctx.moveTo(x, h * 0.2 + rng() * 40); ctx.lineTo(x + (rng() - 0.5) * 6, floorY - 10 - rng() * 30); ctx.stroke(); }
+    glowAt(wx, floorY - 8, ww * 3, '#ffffff', 0.25);
+    ctx.fillStyle = hexA(T === 'ice' ? '#dff4ff' : '#bff0ff', 0.35);
+    ctx.beginPath(); ctx.ellipse(wx, floorY - 4, ww * 2.6, 8, 0, 0, 7); ctx.fill();
+  }
+  if (T === 'lava') {
+    // lávató a mélyben, lávazuhatag a falon
+    const g = ctx.createLinearGradient(0, floorY - 30, 0, floorY + 6);
+    g.addColorStop(0, '#ffd27a'); g.addColorStop(0.5, '#ff7a2c'); g.addColorStop(1, '#8a2410');
+    glowAt(w * 0.5, floorY - 20, w * 0.35, '#ff6a1f', 0.45);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(w * 0.5, floorY - 14, w * 0.24, 18, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,240,180,.6)'; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 8; i++) { const x = w * 0.3 + rng() * w * 0.4; ctx.beginPath(); ctx.moveTo(x, floorY - 18 + rng() * 8); ctx.lineTo(x + 10 + rng() * 20, floorY - 16 + rng() * 8); ctx.stroke(); }
+    const fx = w * (0.4 + rng() * 0.2);
+    const lf = ctx.createLinearGradient(0, h * 0.2, 0, floorY);
+    lf.addColorStop(0, 'rgba(255,200,90,.3)'); lf.addColorStop(1, 'rgba(255,120,40,.9)');
+    ctx.fillStyle = lf; ctx.beginPath(); ctx.moveTo(fx - 6, h * 0.2); ctx.quadraticCurveTo(fx + 8, h * 0.45, fx - 4, floorY - 16); ctx.lineTo(fx + 14, floorY - 16); ctx.quadraticCurveTo(fx + 20, h * 0.45, fx + 6, h * 0.2); ctx.fill();
+  }
+  if (T === 'amethyst') {
+    // ősi rúnaoszlop a csarnok közepén
+    const px = w * 0.5, pw = Math.max(26, w * 0.035), ph = h * 0.36;
+    ctx.fillStyle = vgrad(ctx, floorY - ph, floorY, [[0, '#3a3058'], [1, '#18122a']]);
+    ctx.beginPath(); ctx.roundRect(px - pw / 2, floorY - ph, pw, ph, [8, 8, 0, 0]); ctx.fill();
+    ctx.strokeStyle = hexA(L.rim, 0.4); ctx.lineWidth = 2; ctx.stroke();
+    glowAt(px, floorY - ph * 0.55, pw * 3, L.glow, 0.35);
+    drawRunes(ctx, ['t', 'a', 'th', 'k'], px - pw * 0.12, floorY - ph + 14, pw * 0.42, pw * 0.62, '#e8d0ff');
   }
 
-  // Köd a padló fölött
-  ctx.fillStyle = look.mist;
-  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(rng() * w, floorY + rng() * 40, 200, 30, 0, 0, 7); ctx.fill(); }
+  // 3. Három kulissza (távoli → közeli)
+  curtain(0.3, 0.2, L.layers[0], 0.35, 40);
+  if (T === 'roots') {
+    // Yggdrasil gyökerei a mennyezetből: elvékonyodó, csavarodó, elágazó ívek arany nedvvel
+    const root = (pts, w0, col, depth) => {
+      const n = 26;
+      const P = (t) => {
+        const u = 1 - t;
+        return [u * u * u * pts[0][0] + 3 * u * u * t * pts[1][0] + 3 * u * t * t * pts[2][0] + t * t * t * pts[3][0],
+                u * u * u * pts[0][1] + 3 * u * u * t * pts[1][1] + 3 * u * t * t * pts[2][1] + t * t * t * pts[3][1]];
+      };
+      ctx.lineCap = 'round';
+      for (let k = 0; k < n; k++) {
+        const t0 = k / n, t1 = (k + 1) / n, [x0, y0] = P(t0), [x1, y1] = P(t1);
+        const wd = w0 * (1 - t0 * 0.85);
+        ctx.strokeStyle = col; ctx.lineWidth = wd;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        ctx.strokeStyle = hexA(L.rim, 0.22); ctx.lineWidth = Math.max(1, wd * 0.12);
+        ctx.beginPath(); ctx.moveTo(x0 - wd * 0.3, y0 - wd * 0.2); ctx.lineTo(x1 - wd * 0.3, y1 - wd * 0.2); ctx.stroke();
+        if (k % 3 === 1) {
+          ctx.strokeStyle = hexA('#ffd36b', 0.5); ctx.lineWidth = Math.max(1, wd * 0.08);
+          ctx.beginPath(); ctx.moveTo(x0 + wd * 0.1, y0); ctx.lineTo(x1 + wd * 0.1, y1); ctx.stroke();
+        }
+        // oldalhajtások
+        if (depth > 0 && k > 4 && k % 7 === 0 && wd > 10) {
+          const dir = rng() < 0.5 ? -1 : 1;
+          root([[x0, y0], [x0 + dir * 40, y0 + 30], [x0 + dir * 70, y0 + 60 + rng() * 40], [x0 + dir * (80 + rng() * 60), y0 + 120 + rng() * 60]], wd * 0.45, col, depth - 1);
+        }
+      }
+    };
+    for (let i = 0; i < 6; i++) {
+      const x0 = w * (0.1 + 0.8 * i / 5) + (rng() - 0.5) * 60, x1 = x0 + (rng() - 0.5) * w * 0.5;
+      root([[x0, -30], [x0 + (rng() - 0.5) * 200, h * 0.25], [x1 + (rng() - 0.5) * 200, h * 0.5], [x1, floorY - rng() * 40]],
+        26 + rng() * 30, i % 2 ? L.layers[0] : L.layers[1], 2);
+    }
+    glowAt(w * 0.5, h * 0.4, w * 0.25, '#ffd36b', 0.15);
+  }
+  const midCeil = curtain(0.17, 0.12, L.layers[1], 0.3, 50);
+  // a középső mennyezetről cseppkövek / jégcsapok / gyökérszálak
+  for (const [x, y] of midCeil) {
+    if (rng() < 0.45) continue;
+    const len = 20 + rng() * h * 0.14;
+    if (T === 'ice') {
+      ctx.fillStyle = 'rgba(180,230,255,.55)';
+      ctx.beginPath(); ctx.moveTo(x - 7, y - 4); ctx.lineTo(x, y + len); ctx.lineTo(x + 7, y - 4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x, y + len * 0.8); ctx.stroke();
+    } else if (T === 'moss' || T === 'roots') {
+      ctx.strokeStyle = T === 'moss' ? 'rgba(90,170,110,.55)' : 'rgba(80,60,50,.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x + 6, y + len * 0.3, x - 6, y + len * 0.7, x + 2, y + len * 1.3); ctx.stroke();
+      if (T === 'moss') { ctx.fillStyle = hexA('#8affc0', 0.8); ctx.beginPath(); ctx.arc(x + 2, y + len * 1.3, 2.2, 0, 7); ctx.fill(); }
+    } else stalactite(x, y, len, 10 + rng() * 16, L.layers[1], 0.3);
+  }
+  // fokozat-díszek a középső kulissza tövében
+  for (const side of [0, 1]) {
+    const bx = side ? w * (0.86 + rng() * 0.06) : w * (0.08 + rng() * 0.06);
+    if (T === 'amethyst' || T === 'ice') {
+      glowAt(bx, floorY - 30, 110, L.glow, 0.3);
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k - 2) * 0.32 + (rng() - 0.5) * 0.2, len = 40 + rng() * 60, cw = 9 + rng() * 9;
+        const tx = bx + Math.cos(a) * len, ty = floorY - 6 + Math.sin(a) * len;
+        const nx = -Math.sin(a) * cw / 2, ny = Math.cos(a) * cw / 2;
+        ctx.fillStyle = T === 'ice' ? 'rgba(200,240,255,.85)' : hexA('#b98cff', 0.9);
+        ctx.beginPath(); ctx.moveTo(bx + nx, floorY - 6 + ny); ctx.lineTo(tx, ty); ctx.lineTo(bx - nx, floorY - 6 - ny); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.35)';
+        ctx.beginPath(); ctx.moveTo(bx + nx, floorY - 6 + ny); ctx.lineTo(tx, ty); ctx.lineTo(bx, floorY - 6); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(bx + nx, floorY - 6 + ny); ctx.lineTo(tx, ty); ctx.lineTo(bx - nx, floorY - 6 - ny); ctx.stroke();
+      }
+    }
+    if (T === 'moss') {
+      // világító gombák
+      for (let k = 0; k < 6; k++) {
+        const mx = bx + (rng() - 0.5) * 90, my = floorY - 4 - rng() * 30, r = 5 + rng() * 9;
+        glowAt(mx, my - r * 0.4, r * 4, '#8affc0', 0.25);
+        ctx.fillStyle = '#d8e8d0'; ctx.fillRect(mx - r * 0.18, my - r * 0.4, r * 0.36, r * 1.1);
+        ctx.fillStyle = hexA('#8affc0', 0.95); ctx.beginPath(); ctx.ellipse(mx, my - r * 0.4, r, r * 0.55, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(mx - r * 0.3, my - r * 0.7, r * 0.15, 0, 7); ctx.fill();
+      }
+    }
+    if (T === 'lava') {
+      // bazaltoszlopok
+      for (let k = 0; k < 5; k++) {
+        const cx = bx + (k - 2) * 22 * (side ? -1 : 1), ch = 60 + rng() * 110, cw = 20;
+        ctx.fillStyle = vgrad(ctx, floorY - ch, floorY, [[0, '#4a2a24'], [1, '#160a08']]);
+        ctx.beginPath(); ctx.moveTo(cx - cw / 2, floorY); ctx.lineTo(cx - cw / 2, floorY - ch + 6); ctx.lineTo(cx, floorY - ch); ctx.lineTo(cx + cw / 2, floorY - ch + 6); ctx.lineTo(cx + cw / 2, floorY); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,140,70,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,120,50,.18)'; ctx.fillRect(cx - cw / 2, floorY - ch + 6, cw * 0.3, ch - 6);
+      }
+    }
+  }
 
-  // Vignetta
-  const v = ctx.createRadialGradient(w / 2, h * 0.55, h * 0.2, w / 2, h * 0.55, Math.max(w, h) * 0.75);
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)');
+  // 4. Kőpadló: perspektivikus lapok, a széle felé sötétebb
+  ctx.fillStyle = vgrad(ctx, floorY - 16, h, [[0, L.floor[0]], [1, L.floor[1]]]);
+  const floorEdge = [];
+  for (let x = -10; x <= w + 10; x += 26) floorEdge.push([x, floorY - 12 + Math.sin(x / 110) * 8 + rng() * 6]);
+  ctx.beginPath(); ctx.moveTo(-10, h);
+  for (const [x, y] of floorEdge) ctx.lineTo(x, y);
+  ctx.lineTo(w + 10, h); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = hexA(L.rim, 0.28); ctx.lineWidth = 2;
+  ctx.beginPath(); floorEdge.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  // lapok és repedések (a mélység felé sűrűsödő sorok)
+  for (let row = 0; row < 7; row++) {
+    const y = floorY + Math.pow(row / 7, 1.6) * (h - floorY) + 6;
+    const step = 60 + row * 30;
+    for (let x = -step + (row % 2) * step / 2; x < w + step; x += step * (0.7 + rng() * 0.6)) {
+      ctx.strokeStyle = `rgba(0,0,0,${0.2 + row * 0.03})`; ctx.lineWidth = 1 + row * 0.25;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + step * 0.4, y + 2 + rng() * 3, x + step * 0.8, y + (rng() - 0.5) * 4); ctx.stroke();
+      ctx.strokeStyle = hexA(L.rim, 0.06 + rng() * 0.05); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x + 2, y - 2); ctx.lineTo(x + step * 0.5, y - 1.5); ctx.stroke();
+    }
+  }
+  // padló-díszek fokozatonként
+  for (let i = 0; i < 14; i++) {
+    const x = rng() * w, y = floorY + 10 + rng() * (h - floorY - 20), s = 0.6 + (y - floorY) / (h - floorY);
+    if (T === 'lava' && i < 6) {
+      ctx.strokeStyle = '#ff7a2c'; ctx.lineWidth = 2 * s; ctx.shadowColor = '#ff6a1f'; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 14 * s, y + 3); ctx.lineTo(x + 26 * s, y - 2); ctx.stroke(); ctx.shadowBlur = 0;
+    } else if ((T === 'moss' || T === 'ice') && i < 4) {
+      ctx.fillStyle = hexA(L.glow, 0.18); ctx.beginPath(); ctx.ellipse(x, y, 40 * s, 7 * s, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = hexA('#ffffff', 0.25); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x - 6 * s, y - 1, 18 * s, 2 * s, 0, 0, 7); ctx.stroke();
+    } else if (T === 'roots' && i < 5) {
+      // csontok
+      ctx.strokeStyle = '#cfc4b0'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 18 * s, y - 4 * s); ctx.stroke();
+      ctx.fillStyle = '#cfc4b0'; for (const [dx, dy] of [[0, 0], [18, -4]]) { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, 2.6 * s, 0, 7); ctx.fill(); }
+    } else {
+      ctx.fillStyle = `rgba(0,0,0,${0.25 + rng() * 0.2})`; ctx.beginPath(); ctx.ellipse(x + 3, y + 3, 10 * s, 4 * s, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = L.floor[0]; ctx.beginPath(); ctx.ellipse(x, y, 9 * s, 5 * s, rng(), 0, 7); ctx.fill();
+      ctx.strokeStyle = hexA(L.rim, 0.15); ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+
+  // 5. Közeli kulissza és előtér: nagy sötét sziklák a sarkokban, cseppkövek
+  const nearCeil = curtain(0.05, 0.05, L.layers[2], 0.22, 30);
+  for (const [x, y] of nearCeil) {
+    if (rng() < 0.35) continue;
+    if (T === 'ice') {
+      const len = 30 + rng() * h * 0.16;
+      ctx.fillStyle = 'rgba(150,210,240,.75)'; ctx.beginPath(); ctx.moveTo(x - 9, y - 4); ctx.lineTo(x, y + len); ctx.lineTo(x + 9, y - 4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x, y + len * 0.85); ctx.lineTo(x - 1, y); ctx.fill();
+    } else stalactite(x, y, 30 + rng() * h * 0.16, 16 + rng() * 22, L.layers[2], 0.2);
+  }
+  for (const side of [0, 1]) {
+    const bx = side ? w : 0;
+    ctx.fillStyle = L.layers[2];
+    ctx.beginPath(); ctx.moveTo(bx, h);
+    ctx.lineTo(bx, h - h * (0.22 + rng() * 0.1));
+    ctx.quadraticCurveTo(bx + (side ? -1 : 1) * w * 0.08, h - h * 0.3, bx + (side ? -1 : 1) * w * (0.12 + rng() * 0.05), h - h * 0.1);
+    ctx.lineTo(bx + (side ? -1 : 1) * w * 0.2, h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexA(L.rim, 0.25); ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // 6. Fénysáv a padló fölött, köd és vignetta
+  const haze = ctx.createLinearGradient(0, floorY - 60, 0, floorY + 40);
+  haze.addColorStop(0, hexA(L.glow, 0)); haze.addColorStop(0.5, hexA(L.glow, 0.1)); haze.addColorStop(1, hexA(L.glow, 0));
+  ctx.fillStyle = haze; ctx.fillRect(0, floorY - 60, w, 100);
+  const v = ctx.createRadialGradient(w / 2, h * 0.55, h * 0.25, w / 2, h * 0.55, Math.max(w, h) * 0.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.72)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
 
   scene.textures.addCanvas(key, c);
