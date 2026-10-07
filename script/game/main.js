@@ -14,12 +14,15 @@
 import { Api, GameState } from './state.js';
 import { Hud, esc } from './hud.js';
 import { GameSfx } from './sfx.js';
+import { GameMusic } from './music.js';
 import { generateWorld } from './world.js';
 import { buildTileset, buildSprites, dragonTextures, dragonPortrait } from './art.js';
 import { OverworldScene } from './overworld.js';
 import { BattleScene } from './battle.js';
 import { Story } from './story.js';
 import { layoutPlaces, playerSeed } from './places.js';
+import { buildPeaks } from './terrain.js';
+import { WORLD_ART } from './world-manifest.js';
 
 const CFG = window.GAME || {};
 const shell = document.getElementById('gameShell');
@@ -40,11 +43,26 @@ class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
   init(data) { this.g = data.g; }
 
+  /** A völgy renderelt tárgyai (tools/worldart) — a régi kódrajzok helyett. */
+  preload() {
+    setLoading('A völgy tárgyainak betöltése…', 50);
+    const v = WORLD_ART.v;
+    for (const k of WORLD_ART.keys) this.load.image(k, `img/world/${k}.png?v=${v}`);
+    if (WORLD_ART.peaks?.length) this.load.image('peaks', `img/world/peaks.png?v=${v}`);
+    this.load.on('loaderror', (f) => console.warn('Hiányzó kép, kódrajz pótolja:', f.key));
+  }
+
   async create() {
     const { g } = this;
+    // A hegycsúcsok képkockái a közös lapon
+    if (this.textures.exists('peaks')) {
+      const tex = this.textures.get('peaks');
+      for (const [name, x, y, w, h] of WORLD_ART.peaks) tex.add(name, 0, x, y, w, h);
+    }
     setLoading('Csempék és fák faragása…', 62);
     buildTileset(this);
     buildSprites(this);
+    buildPeaks(this);
 
     // A textúrák a játék közös kezelőjében élnek — bármelyik jelenet eléri
     g.gfx = { textures: this.game.textures };
@@ -116,11 +134,13 @@ async function boot() {
   const sfx = new GameSfx();
   sfx.setMuted(!!state.save.muted);
   const hud = new Hud(shell, state, sfx);
-  const g = { api, state, hud, sfx };
+  const music = new GameMusic(sfx, state);
+  hud.attachMusic(music);
+  const g = { api, state, hud, sfx, music };
   window.__kaland = g;               // fejlesztői fogantyú: a konzolból elérhető állapot
 
   // A hang csak felhasználói gesztus után indulhat
-  const unlock = () => sfx.unlock();
+  const unlock = () => { sfx.unlock(); music.resume(); };
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
 

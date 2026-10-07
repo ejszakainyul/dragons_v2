@@ -1,435 +1,490 @@
 <?php
 /**
- * LÁB és SZÁRNY — ugyanazzal a tömeg-elvvel.
- *
- * A láb nem cső: comb (izomtömeg), lábszár és lábfej külön alakzat,
- * egy sziluetté olvasztva. A szárnynak van vaskos karcsontja, nem csak
- * egy lapos háromszög.
+ * LÁB és SZÁRNY — 18 + 18 kézzel tervezett változat.
  *
  * Rögzített csatlakozási pontok (minden változatban azonosak):
- *   mellső csípő  (36, 38)      hátsó csípő (50, 38)
+ *   mellső csípő  (36, 38)      hátsó csípő (50, 38)      talaj ~ y 58
  *   szárnytő      (36, 27)
+ *
+ * A lábtípusok (a katalógus `shape`-je adja a harci értéküket):
+ *   digit  — hüllőláb ujjakkal és karmokkal
+ *   pillar — vaskos oszlopláb, kerek talp, körmök
+ *   lanky  — hosszú, ujjon járó (fordított térdű) futóláb
+ *   grasp  — markoló „kéz", hosszú ujjak, karmok
+ *   hoof   — pata
+ * Mindegyiken belül egyedi a rajz: kölyöktappancs, jégszilánk-karom,
+ * lávatalp, kakassarkantyú, kecskepata, szőrös lópata, vaspáncél...
  */
 
 /* =====================================================================
    LÁB
    ===================================================================== */
 
-/** [combméret, térd, boka, talphossz, lábszárvastagság] */
-function leg_anatomy(string $shape): array
+/** Az egyes lábak terve. */
+function leg_spec(int $n, array $p): array
 {
-    return match ($shape) {
-        'pillar' => [[6.0, 7.0], 8.0, 15.0, 4.6, [4.6, 4.0]],
-        'lanky'  => [[4.0, 5.4], 9.4, 17.0, 5.0, [2.4, 1.9]],
-        'hoof'   => [[5.0, 6.2], 8.6, 16.0, 3.0, [3.0, 2.0]],
-        'grasp'  => [[5.4, 6.4], 8.4, 15.4, 6.2, [3.4, 2.6]],
-        default  => [[5.2, 6.2], 8.6, 15.6, 4.6, [3.4, 2.5]],   // digit
+    $base = match ($p['shape']) {
+        'pillar' => ['type' => 'pillar', 'thigh' => [6.2, 7.2], 'shin' => [5.0, 4.6], 'knee' => 9, 'ankle' => 16.4, 'foot' => 4.6],
+        'lanky'  => ['type' => 'lanky',  'thigh' => [4.6, 6.0], 'shin' => [2.4, 1.8], 'knee' => 7.6, 'ankle' => 15.6, 'foot' => 5.4],
+        'grasp'  => ['type' => 'grasp',  'thigh' => [5.4, 6.4], 'shin' => [3.4, 2.8], 'knee' => 8.6, 'ankle' => 15.2, 'foot' => 6.0],
+        'hoof'   => ['type' => 'hoof',   'thigh' => [5.0, 6.4], 'shin' => [2.8, 2.0], 'knee' => 8.6, 'ankle' => 15.4, 'foot' => 2.6],
+        default  => ['type' => 'digit',  'thigh' => [5.4, 6.4], 'shin' => [3.6, 2.8], 'knee' => 8.6, 'ankle' => 15.4, 'foot' => 4.8],
     };
+    $extra = match ($n) {
+        1  => ['thigh' => [6.4, 6.6], 'shin' => [4.4, 4.0], 'ankle' => 15.6, 'deco' => 'beans', 'claw' => 0.5],
+        2  => ['deco' => 'scales', 'claw' => 1.15],
+        3  => ['deco' => 'wrinkles'],
+        4  => ['deco' => 'ice', 'claw' => 1.25],
+        5  => ['deco' => 'lava'],
+        6  => ['deco' => 'storm', 'spur' => 1],
+        7  => ['thigh' => [7, 7.6], 'shin' => [5.6, 5.4], 'deco' => 'fur', 'claw' => 1.35],
+        8  => ['thigh' => [4, 5.4], 'shin' => [1.8, 1.4], 'deco' => 'bone', 'claw' => 1.5, 'spur' => 1],
+        9  => ['deco' => 'crystal', 'claw' => 1.2, 'spur' => 1],
+        10 => ['deco' => 'goat'],
+        11 => ['thigh' => [4, 5.4], 'shin' => [1.8, 1.4], 'knee' => 8.4, 'foot' => 6.4, 'deco' => 'scutes'],
+        12 => ['deco' => 'rooster', 'claw' => 1.1, 'spur' => 2],
+        13 => ['shin' => [3.8, 3.2], 'deco' => 'knuckles', 'claw' => 1.45],
+        14 => ['thigh' => [6.8, 7.6], 'shin' => [5.8, 5.6], 'deco' => 'stone'],
+        15 => ['deco' => 'spikes', 'claw' => 1.0],
+        16 => ['shin' => [3.4, 2.8], 'deco' => 'feather'],
+        17 => ['deco' => 'armor', 'claw' => 1.3],
+        default => ['thigh' => [5.6, 7.0], 'shin' => [2.6, 2.0], 'deco' => 'runner', 'claw' => 1.1],
+    };
+    return array_merge(['claw' => 1.0, 'spur' => 0, 'deco' => ''], $base, $extra, ['bulk' => $p['bulk']]);
 }
 
-/** Egy láb tömegei: comb + lábszár + lábfej. */
-function leg_shapes(float $hx, float $hy, int $kneeDir, array $p, float $k): array
+/**
+ * Egy láb: [tömegek, elöl (karmok, díszek), részletek].
+ * $back: hátsó láb (térd előre, csánk hátra).
+ */
+function leg_one(float $hx, float $hy, bool $back, array $s, float $k): array
 {
-    [$thigh, $kneeD, $ankleD, $toeLen, $shank] = leg_anatomy($p['shape']);
+    $g = DG;
+    $ground = 58.0 - (58.0 - $hy) * (1 - $k) * 0.2;
+    $type = $s['type'];
+    $th = $s['thigh']; $sh = $s['shin'];
 
-    $knee  = [$hx + $kneeDir * 4.2, $hy + $kneeD];
-    $ankle = [$hx + $kneeDir * 1.2, $hy + $ankleD];
-    $toe   = [$ankle[0] - $toeLen, $ankle[1] + 4.0];
+    $knee = [$hx + ($back ? -3.4 : -1.2), $hy + $s['knee']];
+    $ankle = [$hx + ($back ? 1.6 : 0.6), $hy + $s['ankle']];
+    if ($type === 'lanky') { $knee = [$hx + ($back ? -4.6 : -2.6), $hy + $s['knee']]; $ankle = [$hx + ($back ? 2.6 : 1.4), $hy + $s['ankle']]; }
+    if ($type === 'pillar') { $knee = [$hx - 0.6, $hy + $s['knee']]; $ankle = [$hx - 0.2, $hy + $s['ankle']]; }
+    $ankle[1] = min($ankle[1], $ground - 3.4);
 
-    // Comb: izomtömeg a csípőnél, enyhén megdöntve
-    $thighM = ellipse_path($hx + $kneeDir * 1.0, $hy + 2.4,
-                           $thigh[0] * $k, $thigh[1] * $k, $kneeDir * 0.18);
+    $thigh = kblob($hx + ($back ? 0.6 : -0.2), $hy + 2.6, $th[0] * $k, $th[1] * $k, $back ? 0.2 : -0.1);
+    $shin = ktube([[$hx, $hy + 3], $knee, $ankle], [$sh[0] * $k, $sh[1] * $k * 1.05, $sh[1] * $k], true, true, 8);
+    $masses = [$thigh, $shin];
+    $front = $detail = '';
+    $toe = [$ankle[0] - $s['foot'], $ground - 1.0];
 
-    // Lábszár: a combtól a bokáig
-    $shankSp = spine([[
-        [$hx + $kneeDir * 1.4, $hy + 3.0],
-        [$knee[0], $knee[1] - 2.6],
-        [$knee[0], $knee[1] + 2.2],
-        $ankle,
-    ]], 10);
-    $shankM = outline_path($shankSp, wsteps([$shank[0] * $k, $shank[1] * $k, $shank[1] * $k]), true, true);
+    switch ($type) {
+        case 'pillar':
+            $masses[] = ktube([[$ankle[0], $ankle[1] - 2], [$ankle[0] - 0.4, $ground - 2.6]], [$sh[1] * $k, $sh[1] * $k * 1.12], true, false, 4);
+            $masses[] = kblob($ankle[0] - 0.8, $ground - 2.2, $sh[1] * $k * 1.28, 2.4, 0);
+            for ($i = 0; $i < 3; $i++) {
+                $x = $ankle[0] - 4.6 * $k + $i * 2.6 * $k;
+                $front .= kfill('M' . fmt($x - 1.1) . ',' . fmt($ground - 0.6) . 'q1.1,-2.2 2.2,0Z', $g['spec'], 1, $g['ink'], 0.5);
+            }
+            break;
 
-    // Lábfej
-    $footSp = spine([[
-        [$ankle[0] + 0.6, $ankle[1] - 1.0],
-        [$ankle[0] + 0.2, $ankle[1] + 2.4],
-        [$toe[0] + 2.4, $toe[1] - 1.0],
-        $toe,
-    ]], 8);
-    $footM = outline_path($footSp, wsteps([$shank[1] * $k, $shank[1] * 0.95 * $k, $shank[1] * 1.05 * $k]), true, true);
+        case 'hoof':
+            $masses[] = ktube([$ankle, [$ankle[0] - 0.8, $ground - 3]], [$sh[1] * $k, $sh[1] * $k * 0.9], true, true, 4);
+            $hoof = kpoly([[$ankle[0] - 3.2, $ground - 3.4], [$ankle[0] + 1.4, $ground - 3.4], [$ankle[0] + 2.0, $ground], [$ankle[0] - 4.4, $ground]]);
+            $front .= kpiece($hoof, $g['dark'], 1.0) . kstroke('M' . fmt($ankle[0] - 1.2) . ',' . fmt($ground - 3.2) . 'L' . fmt($ankle[0] - 1.4) . ',' . fmt($ground), $g['ink'], 0.7)
+                    . kfill(kpoly([[$ankle[0] - 3, $ground - 3.2], [$ankle[0] - 1.6, $ground - 3.2], [$ankle[0] - 2.6, $ground - 0.4]]), $g['light'], 0.4);
+            $toe = [$ankle[0] - 1.6, $ground];
+            break;
 
-    return [[$thighM, $shankM, $footM], $knee, $ankle, $toe];
+        case 'grasp':
+            $masses[] = kblob($ankle[0] - 1.4, $ground - 2.8, 3.6 * $k, 2.6, 0);
+            for ($i = 0; $i < 4; $i++) {
+                $bx = $ankle[0] - 2.4 - $i * 1.1; $by = $ground - 3.2 + $i * 0.2;
+                $tip = [$bx - 3.4 - (2 - abs($i - 1.5)) * 0.8, $ground - 0.4];
+                $masses[] = ktube([[$bx + 1, $by], [$tip[0] + 1, $tip[1] - 1.2], $tip], [1.2, 1.0, 0.8], true, true, 4);
+                $front .= kpiece(khorn([$tip[0] + 0.3, $tip[1] - 0.6], [$tip[0] - 2.2 * $s['claw'], $tip[1] + 1.2], 1.2, 0.35), $g['spec'], 0.7);
+            }
+            break;
+
+        case 'lanky':
+            $masses[] = ktube([$ankle, [$ankle[0] - 0.8, $ground - 2]], [$sh[1] * $k, $sh[1] * $k], true, true, 4);
+            foreach ([[-$s['foot'], -0.2], [-$s['foot'] * 0.75, 0.6], [1.8, 0.2]] as $i => [$dx, $dy]) {
+                $tip = [$ankle[0] - 0.8 + $dx, $ground - 0.6 + $dy];
+                $masses[] = ktube([[$ankle[0] - 0.8, $ground - 2], $tip], [1.4 * $k, 1.0 * $k], true, true, 4);
+                if ($s['claw'] > 0.01) $front .= kpiece(khorn([$tip[0] + ($dx < 0 ? 0.4 : -0.4), $tip[1] - 0.2], [$tip[0] + ($dx < 0 ? -2 : 1.6) * $s['claw'], $tip[1] + 0.8], 1.1, $dx < 0 ? 0.3 : -0.3), $g['spec'], 0.6);
+            }
+            break;
+
+        default: // digit
+            $masses[] = ktube([[$ankle[0] + 0.6, $ankle[1] - 0.6], [$ankle[0], $ground - 2.2], $toe], [$sh[1] * $k, $sh[1] * $k * 0.95, $sh[1] * $k * 0.9], true, true, 6);
+            for ($i = 0; $i < 3; $i++) {
+                $cx = $toe[0] + $i * 1.9; $cy = $ground - 0.4 - abs($i - 1) * 0.3;
+                $front .= kpiece(khorn([$cx + 0.8, $cy - 1.2], [$cx - 2.0 * $s['claw'], $cy + 1.4 * $s['claw']], 1.6, 0.3), $g['spec'], 0.7);
+            }
+    }
+
+    /* --- Egyedi díszítés --- */
+    $mid = [($knee[0] + $ankle[0]) / 2, ($knee[1] + $ankle[1]) / 2];
+    switch ($s['deco']) {
+        case 'beans':
+            $detail .= kfill(kblob($ankle[0] - 1, $ground - 2.4, 2.4, 1.2), $g['spec'], 0.4);
+            break;
+        case 'scales':
+        case 'scutes':
+            for ($i = 0; $i < 5; $i++) {
+                $y = $knee[1] + ($ankle[1] - $knee[1]) * $i / 4;
+                $x = $knee[0] + ($ankle[0] - $knee[0]) * $i / 4;
+                $detail .= kstroke('M' . fmt($x - 2.2) . ',' . fmt($y) . 'q2.2,1.4 4.4,0', $g['shadow'], 0.6, 0.55);
+            }
+            break;
+        case 'wrinkles':
+            foreach ([0.2, 0.45, 0.7] as $f) {
+                $y = $knee[1] + ($ground - $knee[1]) * $f;
+                $detail .= kstroke('M' . fmt($ankle[0] - 3.4) . ',' . fmt($y) . 'q3.4,1.2 6.4,-0.4', $g['shadow'], 0.6, 0.5);
+            }
+            break;
+        case 'ice':
+            $front .= kpiece(kshard([$knee[0] + 1.4, $knee[1] - 1], [$knee[0] + 5.6, $knee[1] - 4.2], 2.0), $g['light'], 1.0)
+                    . kpiece(kshard([$mid[0] + 1, $mid[1]], [$mid[0] + 5, $mid[1] - 1.6], 1.6), $g['light'], 1.0);
+            $detail .= kstroke(kline([[$knee[0] - 2, $knee[1] - 3], [$knee[0] + 1, $knee[1] + 1], [$ankle[0] - 1, $ankle[1]]]), $g['spec'], 0.5, 0.6);
+            break;
+        case 'lava':
+            $c = 'M' . fmt($hx - 3) . ',' . fmt($hy + 2) . 'l2,2.4l-0.8,2.6l1.6,2M' . fmt($ankle[0] - 2) . ',' . fmt($knee[1] + 1) . 'l1.4,2.4l-1,2.4';
+            $detail .= kstroke($c, $g['spec'], 1.8, 0.2) . kstroke($c, $g['spec'], 0.6, 0.85)
+                     . kfill(kblob($ankle[0] - 0.8, $ground - 1.6, 4.4, 1.2), $g['shadow'], 0.6);
+            break;
+        case 'storm':
+            $detail .= kstroke('M' . fmt($hx - 2) . ',' . fmt($hy + 1) . 'l2.4,2l-1.4,1.2l2.6,2.4', $g['spec'], 0.7, 0.8);
+            break;
+        case 'fur':
+            for ($i = 0; $i < 4; $i++) $front .= kpiece(kflame([$ankle[0] - 3 + $i * 1.8, $ankle[1] - 1], [$ankle[0] - 4.4 + $i * 2, $ankle[1] + 4.2], 2.0, 0.2), $i % 2 ? $g['mid'] : $g['light'], 0.8);
+            break;
+        case 'bone':
+            $detail .= kstroke('M' . fmt($knee[0] - 1.6) . ',' . fmt($knee[1] - 4) . 'L' . fmt($knee[0] + 0.4) . ',' . fmt($knee[1] + 3), $g['bright'], 0.7, 0.6)
+                     . kfill(kblob($knee[0], $knee[1], 1.6, 1.4), $g['bright'], 0.5);
+            break;
+        case 'crystal':
+            $front .= kpiece(kshard([$hx + 2, $hy + 3], [$hx + 6.6, $hy + 0.6], 2.2), $g['bright'], 1.0) . kfill(kshard_lit([$hx + 2, $hy + 3], [$hx + 6.6, $hy + 0.6], 2.2), $g['spec'], 0.5);
+            break;
+        case 'goat':
+        case 'feather':
+            $big = $s['deco'] === 'feather';
+            for ($i = 0; $i < ($big ? 5 : 3); $i++) {
+                $bx = $ankle[0] - 2.8 + $i * 1.4;
+                $front .= kpiece(kflame([$bx, $ankle[1] - ($big ? 2.4 : 0.6)], [$bx - 1.4 + $i * 0.5, $ground - ($big ? 0.6 : 2.0)], $big ? 2.4 : 1.8, 0.25), $i % 2 ? $g['bright'] : $g['light'], 0.8);
+            }
+            break;
+        case 'rooster':
+            for ($i = 0; $i < 5; $i++) {
+                $y = $knee[1] + 1 + ($ankle[1] - $knee[1]) * $i / 5;
+                $x = $knee[0] + ($ankle[0] - $knee[0]) * $i / 5;
+                $detail .= kstroke('M' . fmt($x - 2) . ',' . fmt($y) . 'L' . fmt($x + 2) . ',' . fmt($y + 0.4), $g['shadow'], 0.7, 0.6);
+            }
+            break;
+        case 'knuckles':
+            for ($i = 0; $i < 4; $i++) $detail .= kfill(kblob($ankle[0] - 2.8 - $i * 1.1, $ground - 3.2, 0.8, 0.6), $g['spec'], 0.5);
+            break;
+        case 'stone':
+            $detail .= kfill(kpoly([[$hx - 4, $hy + 7], [$hx + 2, $hy + 6], [$hx + 3, $hy + 11], [$hx - 3, $hy + 12]]), $g['shadow'], 0.25)
+                     . kstroke('M' . fmt($hx - 4.6) . ',' . fmt($hy + 12.4) . 'L' . fmt($hx + 4) . ',' . fmt($hy + 11.8) . 'M' . fmt($hx - 4.6) . ',' . fmt($hy + 6.6) . 'L' . fmt($hx + 3.6) . ',' . fmt($hy + 5.6), $g['ink'], 0.6, 0.55);
+            break;
+        case 'spikes':
+            for ($i = 0; $i < 3; $i++) {
+                $f = 0.2 + $i * 0.3;
+                $b = [$knee[0] + ($ankle[0] - $knee[0]) * $f + 1.6, $knee[1] + ($ankle[1] - $knee[1]) * $f];
+                $front .= kpiece(khorn($b, [$b[0] + 3.2, $b[1] - 2.4], 1.6, -0.1), $g['light'], 0.9);
+            }
+            $front .= kpiece(khorn([$hx + 3.4, $hy + 2], [$hx + 7, $hy - 0.6], 2.0, -0.1), $g['light'], 0.9);
+            break;
+        case 'armor':
+            foreach ([[$hx, $hy + 3, 4.6], [$mid[0], $mid[1], 3.6]] as [$x, $y, $r]) {
+                $plate = ksmooth([[$x - $r, $y - 2.4], [$x + $r, $y - 2.8], [$x + $r * 0.9, $y + 2.6], [$x - $r * 0.9, $y + 2.8]], true, 0.6);
+                $front .= kpiece($plate, $g['light'], 0.9) . kfill(kblob($x - $r * 0.5, $y - 1.4, 0.5, 0.5), $g['spec']) . kfill(kblob($x + $r * 0.5, $y - 1.6, 0.5, 0.5), $g['spec']);
+            }
+            break;
+        case 'runner':
+            $detail .= kstroke('M' . fmt($hx - 3) . ',' . fmt($hy + 4) . 'q2,4 0.6,7', $g['shadow'], 0.7, 0.5);
+            break;
+    }
+
+    // Sarkantyú
+    if ($s['spur']) {
+        $len = $s['spur'] > 1 ? 4.6 : 3.4;
+        $front .= kpiece(khorn([$ankle[0] + 1, $ankle[1] + 0.6], [$ankle[0] + 1 + $len, $ankle[1] + 2.4], 1.6, -0.25), $g['bright'], 0.8);
+    }
+
+    // Térdhajlat
+    $detail .= kstroke('M' . fmt($knee[0] - 2.6 * $k) . ',' . fmt($knee[1]) . 'q2.6,1.6 5.2,-0.4', $g['shadow'], 0.7, 0.4);
+
+    return [$masses, $front, $detail];
 }
 
 function draw_legs(int $n, array $p): string
 {
     $id = "l$n";
     $g  = DG;
-    $k  = $p['bulk'];
-    $claw = $p['claw'];
+    $s  = leg_spec($n, $p);
+    $k  = $s['bulk'];
 
     $near = $far = [];
-    $claws = $detail = '';
+    $front = $detail = $farFront = '';
 
     // Túloldali pár: hátrébb és feljebb, sötétebben — ez adja a mélységet
-    foreach ([[36.0 + 3.6, 38.0 - 1.4, -1], [50.0 + 3.6, 38.0 - 1.4, +1]] as [$hx, $hy, $dir]) {
-        [$shapes] = leg_shapes($hx, $hy, $dir, $p, $k * 0.86);
-        $far = array_merge($far, $shapes);
+    foreach ([[39.6, 36.6, false], [53.6, 36.6, true]] as [$hx, $hy, $back]) {
+        [$m, $f] = leg_one($hx, $hy, $back, $s, $k * 0.88);
+        $far = array_merge($far, $m);
+        $farFront .= $f;
     }
-
-    foreach ([[36.0, 38.0, -1], [50.0, 38.0, +1]] as [$hx, $hy, $dir]) {
-        [$shapes, $knee, $ankle, $toe] = leg_shapes($hx, $hy, $dir, $p, $k);
-        $near = array_merge($near, $shapes);
-
-        // Karmok / pata
-        if ($p['shape'] === 'hoof') {
-            $claws .= '<path d="M' . fmt($toe[0] + 1.6) . ',' . fmt($toe[1] - 1.6)
-                    . 'L' . fmt($toe[0] + 2.8) . ',' . fmt($toe[1] + 2.6)
-                    . 'L' . fmt($toe[0] - 3.0) . ',' . fmt($toe[1] + 2.6)
-                    . 'L' . fmt($toe[0] - 2.2) . ',' . fmt($toe[1] - 1.6) . 'Z" fill="' . $g['bright']
-                    . '" stroke="' . $g['ink'] . '" stroke-width="0.9" stroke-linejoin="round"/>';
-        } elseif ($claw > 0.01) {
-            $count = $p['shape'] === 'grasp' ? 4 : 3;
-            $d = '';
-            for ($i = 0; $i < $count; $i++) {
-                $cx = $toe[0] + $i * 1.9;
-                $cy = $toe[1] + 1.4 - abs($i - 1) * 0.35;
-                $d .= 'M' . fmt($cx + 1.0) . ',' . fmt($cy - 1.8)
-                    . 'Q' . fmt($cx - 1.2) . ',' . fmt($cy - 0.6) . ' '
-                    . fmt($cx - 2.4 * $claw) . ',' . fmt($cy + 2.0 * $claw)
-                    . 'Q' . fmt($cx - 0.6) . ',' . fmt($cy + 0.4) . ' '
-                    . fmt($cx + 1.2) . ',' . fmt($cy) . 'Z';
-            }
-            $claws .= '<path d="' . $d . '" fill="' . $g['bright'] . '" stroke="' . $g['ink']
-                    . '" stroke-width="0.7" stroke-linejoin="round"/>';
-        }
-
-        // Sarkantyú
-        if (!empty($p['spur'])) {
-            $claws .= '<path d="M' . fmt($ankle[0] + 1.4) . ',' . fmt($ankle[1] - 1.2)
-                    . 'L' . fmt($ankle[0] + 5.2) . ',' . fmt($ankle[1] + 1.4)
-                    . 'L' . fmt($ankle[0] + 1.2) . ',' . fmt($ankle[1] + 2.0) . 'Z" fill="' . $g['light']
-                    . '" stroke="' . $g['ink'] . '" stroke-width="0.7" stroke-linejoin="round"/>';
-        }
-
-        // Térdhajlat és ínszalag
-        $detail .= '<path d="M' . fmt($knee[0] - 3.0 * $k) . ',' . fmt($knee[1])
-                 . 'q3,1.8 6,-0.4" fill="none" stroke="' . $g['shadow']
-                 . '" stroke-width="0.8" opacity="0.45" stroke-linecap="round"/>';
-        $detail .= '<path d="M' . fmt($ankle[0] - 1.6) . ',' . fmt($ankle[1] - 3.0)
-                 . 'q1.6,2.4 0.6,4.4" fill="none" stroke="' . $g['shadow']
-                 . '" stroke-width="0.7" opacity="0.4" stroke-linecap="round"/>';
+    foreach ([[36.0, 38.0, false], [50.0, 38.0, true]] as [$hx, $hy, $back]) {
+        [$m, $f, $d] = leg_one($hx, $hy, $back, $s, $k);
+        $near = array_merge($near, $m);
+        $front .= $f;
+        $detail .= $d;
     }
 
     $farLayer = silhouette($id . '-far-clip', $far, $g['dark'], 1.7);
 
     return '<g id="' . $id . '">'
          . '<defs>' . $farLayer['defs'] . '</defs>'
-         . '<g opacity="0.72">' . $farLayer['draw'] . '</g>'
-         . assemble($id, $near, 'url(#' . $id . '-volV)', $detail, '', $claws, 1.9)
+         . '<g opacity="0.78">' . $farLayer['draw'] . '<g opacity="0.7">' . $farFront . '</g></g>'
+         . assemble($id, $near, 'url(#' . $id . '-volV)', $detail, '', $front, 1.9)
          . '</g>';
 }
 
 /* =====================================================================
    SZÁRNY
+   ---------------------------------------------------------------------
+   A szárny a vállból (36, 27) FELFELÉ és hátra nyílik, hogy ne takarja
+   el a hátat (és a hátdíszeket). A játék a szárnytő körül forgatja.
    ===================================================================== */
+
+const WROOT = [36.0, 27.0];
+
+/**
+ * Denevérszárny: kar (váll → könyök → csukló), ujjak a csuklóból,
+ * köztük ívesen behúzott hártya, ami a hátra (attach) fut vissza.
+ */
+function wing_bat(string $id, array $o): string
+{
+    $g = DG;
+    $o = array_merge(['elbow' => [40, 18], 'wrist' => [45, 10], 'tips' => [], 'attach' => [53, 25.6],
+                      'scallop' => 0.3, 'arm' => [1.7, 1.15], 'finger' => 0.75, 'claws' => true, 'thumb' => true,
+                      'holes' => [], 'tears' => [], 'tatters' => 0, 'veins' => true, 'facets' => false, 'far' => false,
+                      'fill' => '', 'jag' => 0], $o);
+    $R = WROOT; $W = $o['wrist'];
+    $tips = $o['tips'];
+
+    // Hártya körvonala
+    $d = 'M' . fmtp($R) . 'L' . fmtp($o['elbow']) . 'L' . fmtp($W) . 'L' . fmtp($tips[0]);
+    $edge = array_merge(array_slice($tips, 1), [$o['attach']]);
+    $prev = $tips[0];
+    foreach ($edge as $i => $t) {
+        $mid = [($prev[0] + $t[0]) / 2, ($prev[1] + $t[1]) / 2];
+        $c = [$mid[0] + ($W[0] - $mid[0]) * $o['scallop'], $mid[1] + ($W[1] - $mid[1]) * $o['scallop']];
+        if ($o['jag']) {
+            // szakadozott szél: apró cikkcakk a két csúcs között
+            $steps = 4;
+            for ($k = 1; $k <= $steps; $k++) {
+                $f = $k / $steps; $u = 1 - $f;
+                $q = [$u * $u * $prev[0] + 2 * $u * $f * $c[0] + $f * $f * $t[0], $u * $u * $prev[1] + 2 * $u * $f * $c[1] + $f * $f * $t[1]];
+                $j = ($k % 2 ? 1 : -0.6) * $o['jag'];
+                $d .= 'L' . fmt($q[0] + ($W[0] - $q[0]) * 0.05 * $j) . ',' . fmt($q[1] + ($W[1] - $q[1]) * 0.05 * $j + $j * 0.6);
+            }
+        } else {
+            $d .= 'Q' . fmtp($c) . ' ' . fmtp($t);
+        }
+        $prev = $t;
+    }
+    $d .= 'Q' . fmt(($o['attach'][0] + $R[0]) / 2) . ',' . fmt(($o['attach'][1] + $R[1]) / 2 + 2.4) . ' ' . fmtp($R) . 'Z';
+
+    // Erezet és díszek a hártyán
+    $det = '';
+    if ($o['veins']) {
+        $v = '';
+        foreach ($edge as $i => $t) {
+            $m = [($W[0] + $t[0]) / 2, ($W[1] + $t[1]) / 2];
+            $v .= 'M' . fmt($W[0] + ($m[0] - $W[0]) * 0.3) . ',' . fmt($W[1] + ($m[1] - $W[1]) * 0.3)
+                . 'Q' . fmt($m[0] + 1.2) . ',' . fmt($m[1] + 1.2) . ' ' . fmt($t[0] + ($W[0] - $t[0]) * 0.25) . ',' . fmt($t[1] + ($W[1] - $t[1]) * 0.25);
+        }
+        $det .= kstroke($v, $g['shadow'], 0.5, 0.45);
+    }
+    if ($o['facets']) {
+        $f = '';
+        $prevT = $tips[0];
+        foreach (array_merge(array_slice($tips, 1), [$o['attach']]) as $i => $t) {
+            $f .= kfill(kpoly([$W, $prevT, [($prevT[0] + $t[0]) / 2 + ($W[0] - $t[0]) * 0.2, ($prevT[1] + $t[1]) / 2 + ($W[1] - $t[1]) * 0.2]]), $i % 2 ? $g['spec'] : $g['shadow'], $i % 2 ? 0.35 : 0.25);
+            $prevT = $t;
+        }
+        $det .= $f;
+    }
+    foreach ($o['holes'] as [$x, $y, $r]) {
+        $det .= kfill(ksmooth([[$x - $r, $y], [$x - $r * 0.3, $y - $r * 0.8], [$x + $r, $y - $r * 0.3], [$x + $r * 0.6, $y + $r * 0.8], [$x - $r * 0.4, $y + $r * 0.7]]), $g['ink'], 0.85)
+              . kstroke(ksmooth([[$x - $r, $y], [$x - $r * 0.3, $y - $r * 0.8], [$x + $r, $y - $r * 0.3], [$x + $r * 0.6, $y + $r * 0.8], [$x - $r * 0.4, $y + $r * 0.7]]), $g['spec'], 0.6, 0.7);
+    }
+    foreach ($o['tears'] as [$a, $b]) {
+        $det .= kfill(kpoly([$a, [($a[0] + $b[0]) / 2 + 0.8, ($a[1] + $b[1]) / 2], $b, [($a[0] + $b[0]) / 2 - 0.6, ($a[1] + $b[1]) / 2 + 0.4]]), $g['ink'], 0.8);
+    }
+
+    // Hártyamezők: az ujjak közti panelek felváltva világosabbak — ettől
+    // látszik feszesnek a hártya
+    $pan = '';
+    $prevT = $tips[0];
+    foreach ($edge as $i => $t) {
+        $pan .= kfill(kpoly([$W, $prevT, $t]), $i % 2 ? $g['spec'] : $g['shadow'], $i % 2 ? 0.14 : 0.12);
+        $prevT = $t;
+    }
+    $det = $pan . $det;
+
+    // Lógó cafatok a hártya alsó szélén
+    $tat = '';
+    for ($i = 0; $i < $o['tatters']; $i++) {
+        $f = ($i + 0.5) / $o['tatters'];
+        $a = $tips[count($tips) - 1]; $b = $o['attach'];
+        $p0 = [$a[0] + ($b[0] - $a[0]) * $f, $a[1] + ($b[1] - $a[1]) * $f];
+        $tat .= kpiece(kflame($p0, [$p0[0] + 1.6, $p0[1] + 4.6 + ($i % 2) * 2], 2.2, 0.3), $g['dark'], 0.9);
+    }
+
+    // Csontok
+    $bones = kpiece(ktube([[$R[0] + 0.6, $R[1] - 1.6], $o['elbow'], $W], [$o['arm'][0], $o['arm'][1] * 1.1, $o['arm'][1]], true, true, 8), $g['mid'], 1.2)
+           . kstroke(kline([[$R[0] + 0.6, $R[1] - 2], $o['elbow'], $W]), $g['bright'], 0.5, 0.6);
+    foreach ($tips as $t) {
+        $bones .= kpiece(ktube([$W, [($W[0] + $t[0]) / 2 + 0.5, ($W[1] + $t[1]) / 2 + 0.3], $t], [1.1 * $o['finger'], 0.8 * $o['finger'], 0.35], true, true, 6), $g['mid'], 0.9);
+    }
+    $bones .= kfill(kblob($W[0], $W[1], 1.15, 1.0), $g['light'], 1, $g['ink'], 0.7);
+    if ($o['thumb']) $bones .= kpiece(khorn([$W[0] - 0.6, $W[1] - 0.6], [$W[0] - 3.6, $W[1] - 2.4], 1.4, -0.3), $g['spec'], 0.8);
+    if ($o['claws']) foreach ($tips as $t) $bones .= kpiece(khorn($t, [$t[0] + ($t[0] - $W[0]) * 0.14, $t[1] + ($t[1] - $W[1]) * 0.14], 1.0, 0.2), $g['spec'], 0.6);
+
+    // Túloldali szárny: ugyanaz sötéten, kissé elforgatva — mélység
+    $far = '';
+    if ($o['far']) {
+        $far = '<g transform="rotate(-16 ' . fmt($R[0]) . ' ' . fmt($R[1]) . ') translate(-1.6,-1.2)" opacity="0.8">'
+             . kfill($d, $g['ink'], 1, $g['ink'], 1.6) . kfill($d, $g['shadow']) . '</g>';
+    }
+
+    return $far . assemble($id, [$d], 'url(#' . ($o['gid'] ?? $id) . '-vol)', $det, '', $tat . $bones, 1.7);
+}
+
+/** Tollas szárny: fedőtollak, evezőtollak rétegekben. */
+function wing_feathers(string $id, array $o): string
+{
+    $g = DG;
+    $o = array_merge(['n' => 7, 'len' => 22, 'spread' => [-1.25, -0.15], 'arm' => [[41, 17], [47, 10]], 'jag' => false, 'far' => false], $o);
+    $R = WROOT;
+    [$E, $W] = $o['arm'];
+    $prim = $sec = $cov = '';
+    $farD = '';
+    for ($i = 0; $i < $o['n']; $i++) {
+        $f = $i / max(1, $o['n'] - 1);
+        $a = $o['spread'][0] + ($o['spread'][1] - $o['spread'][0]) * $f;
+        $base = [$W[0] + ($R[0] + 6 - $W[0]) * $f * 0.9, $W[1] + ($R[1] - 2 - $W[1]) * $f * 0.9];
+        $L = $o['len'] * (1 - $f * 0.45);
+        $tip = [$base[0] + cos($a) * $L, $base[1] + sin($a) * $L];
+        $leaf = kleaf($base, $tip, 3.4 - $f * 0.6, 0.55);
+        if ($o['jag']) {
+            $mid = [($base[0] + $tip[0]) / 2, ($base[1] + $tip[1]) / 2];
+            $leaf = kpoly([[$base[0] - 1.4, $base[1] + 1], [$mid[0] + 1.6, $mid[1] - 0.4], [$mid[0] + 0.2, $mid[1] + 1.4], $tip, [$mid[0] - 1.4, $mid[1] - 1.6], [$base[0] + 1.4, $base[1] - 1]]);
+        }
+        $prim .= kpiece($leaf, $i % 2 ? $g['light'] : $g['bright'], 1.1) . kstroke(kline([$base, [($base[0] * 0.3 + $tip[0] * 0.7), ($base[1] * 0.3 + $tip[1] * 0.7)]]), $g['dark'], 0.45, 0.6);
+        $farD .= kleaf([$base[0] - 2, $base[1] - 1], [$tip[0] - 3, $tip[1] - 1], 3.2, 0.55);
+    }
+    // Fedőtollak két sorban a kar mentén
+    for ($r = 0; $r < 2; $r++) {
+        for ($i = 0; $i < 5; $i++) {
+            $f = $i / 4;
+            $base = [$E[0] + ($W[0] - $E[0]) * $f * 0.8 - $r * 1.6, $E[1] + ($W[1] - $E[1]) * $f * 0.8 + 1.2 + $r * 2.4];
+            $tip = [$base[0] + 6 - $r, $base[1] + 4.4 + $r];
+            $cov .= kpiece(kleaf($base, $tip, 2.8, 0.5), $r ? $g['mid'] : $g['light'], 0.9);
+        }
+    }
+    $arm = kpiece(ktube([[$R[0] + 0.6, $R[1] - 1.6], $E, $W], [2.0, 1.7, 1.3], true, true, 8), $g['mid'], 1.2);
+    $far = $o['far'] ? '<g transform="rotate(-14 36 27)" opacity="0.75">' . kfill($farD, $g['shadow'], 1, $g['ink'], 1.1) . '</g>' : '';
+    return $far . $prim . $cov . $arm;
+}
+
+/** Rovarszárny: hosszú, keskeny hártyák sűrű erezettel (két pár). */
+function wing_insect(string $id, array $pairs): string
+{
+    $g = DG;
+    $out = '';
+    foreach ($pairs as $j => [$tip, $w, $curve, $fill]) {
+        $R = [WROOT[0] + $j * 0.8, WROOT[1] + $j * 0.6];
+        $shape = khorn($R, $tip, $w, $curve);
+        $dx = $tip[0] - $R[0]; $dy = $tip[1] - $R[1];
+        $vein = '';
+        for ($k = 1; $k < 7; $k++) {
+            $f = $k / 7;
+            $c = [$R[0] + $dx * $f, $R[1] + $dy * $f];
+            $vein .= 'M' . fmt($c[0] - $dy * 0.08) . ',' . fmt($c[1] + $dx * 0.08) . 'L' . fmt($c[0] + $dy * 0.08) . ',' . fmt($c[1] - $dx * 0.08);
+        }
+        $vein .= kline([$R, $tip]);
+        $out .= kfill($shape, $g['ink'], 1, $g['ink'], 1.3) . kfill($shape, $fill, 0.9)
+              . kfill(khorn([$R[0] - 0.3, $R[1] - 0.3], [$tip[0] - 1, $tip[1] - 0.6], $w * 0.4, $curve), $g['spec'], 0.4)
+              . kstroke($vein, $g['dark'], 0.45, 0.7);
+    }
+    return $out . kfill(kblob(WROOT[0] + 0.6, WROOT[1], 2.2, 1.8), $g['light'], 1, $g['ink'], 1.0);
+}
+
+/** Úszószárny: legyező alakú, merevítő sugarakkal. */
+function wing_fin(string $id, float $s, int $rays, float $a0, float $a1, bool $far = true): string
+{
+    $g = DG;
+    $R = WROOT;
+    $pts = [$R];
+    $rayD = '';
+    for ($i = 0; $i <= $rays; $i++) {
+        $a = $a0 + ($a1 - $a0) * $i / $rays;
+        $L = $s * (0.75 + 0.25 * sin(M_PI * $i / $rays));
+        $t = [$R[0] + cos($a) * $L, $R[1] + sin($a) * $L];
+        if ($i) {
+            $am = $a - ($a1 - $a0) / $rays / 2;
+            $pts[] = [$R[0] + cos($am) * $L * 0.86, $R[1] + sin($am) * $L * 0.86];
+        }
+        $pts[] = $t;
+        $rayD .= 'M' . fmt($R[0] + cos($a) * 2) . ',' . fmt($R[1] + sin($a) * 2) . 'L' . fmtp($t);
+    }
+    $d = kpoly($pts);
+    $farS = $far ? '<g transform="rotate(-18 36 27)" opacity="0.75">' . kfill($d, $g['shadow'], 1, $g['ink'], 1.3) . '</g>' : '';
+    return $farS . assemble($id, [$d], 'url(#' . $id . '-membrane)', kstroke($rayD, $g['ink'], 1.1, 0.8) . kstroke($rayD, $g['bright'], 0.5, 0.9), '', '', 1.6);
+}
+
+/** Kristályszárny: legyezőbe rendezett prizmák. */
+function wing_crystals(string $id, array $list): string
+{
+    $g = DG;
+    $out = '';
+    foreach ($list as [$tip, $w, $from]) {
+        $b = $from ?? WROOT;
+        $out .= kpiece(kshard($b, $tip, $w), $g['light'], 1.3) . kfill(kshard_lit($b, $tip, $w), $g['spec'], 0.6)
+              . kstroke(kline([$b, $tip]), $g['spec'], 0.4, 0.5);
+    }
+    return $out . kfill(kblob(WROOT[0], WROOT[1], 2.6, 2.2), $g['bright'], 1, $g['ink'], 1.0);
+}
 
 function draw_wings(int $n, array $p): string
 {
     $id = "w$n";
-    $root = [36.0, 27.0];
-    $size = $p['size'];
-    $fingers = max(2, (int)$p['fingers']);
-
-    return '<g id="' . $id . '">' . match ($p['shape']) {
-        'feather' => wing_feather_m($id, $root, $size, $fingers),
-        'insect'  => wing_insect_m($id, $root, $size),
-        'fin'     => wing_fin_m($id, $root, $size, $fingers),
-        'crystal' => wing_crystal_m($id, $root, $size, $fingers),
-        'double'  => wing_bat_m($id . '-b', [$root[0] + 3.4, $root[1] + 5.4], $size * 0.72, $fingers, false, true)
-                   . wing_bat_m($id . '-a', $root, $size * 0.92, $fingers, false),
-        'torn'    => wing_bat_m($id, $root, $size, $fingers, true),
-        default   => wing_bat_m($id, $root, $size, $fingers, false),
-    } . '</g>';
-}
-
-/**
- * Sugarak legyezőben, a tőből. Az uszony- és kristályszárnyé — azoknál
- * tényleg a tőből indul minden sugár. A bőrszárny NEM ilyen: ott a
- * membránt egy csuklóból szétnyíló ujjköteg feszíti, lásd wing_frame().
- */
-function wing_tips(array $root, float $size, int $fingers, float $reach = 24.0): array
-{
-    $tips = [];
-    $d = max(1, $fingers - 1);
-    for ($i = 0; $i < $fingers; $i++) {
-        $a = -1.30 + 1.55 * $i / $d;
-        $len = $reach * $size * (1.0 - 0.30 * $i / $d);
-        $tips[] = [$root[0] + cos($a) * $len, $root[1] + sin($a) * $len];
-    }
-    return $tips;
-}
-
-/**
- * A bőrszárny váza.
- *
- * Két korábbi zsákutca után:
- *   1. minden ujj a vállból  -> legyező lett, nem szárny
- *   2. fix hosszú ujjak a csuklóból -> elfért a dobozban, de apró lett
- *
- * Itt az ujjhegyek a RAJZTERÜLET PEREMÉRE vetülnek: minden irányban
- * addig nyúlnak, ameddig a 64x64-es viewBox engedi (ellipszis-metszés),
- * és csak a `size` skálázza vissza őket. Így a nagy szárnyak tényleg
- * nagyok, a kicsik meg arányosan kicsik, de egyik sem lóg ki.
- *
- * A felépítés anatómiai: a felkar a vállból fölfelé-hátra ível egy
- * magasan ülő csuklóig, és az ujjak onnan sepernek szét hátra-lefelé.
- */
-function wing_frame(array $root, float $size, int $fingers): array
-{
-    $fingers = max(2, $fingers);
-    $d = $fingers - 1;
-
-    $elbow = [$root[0] + 1.4 * $size, $root[1] -  6.2 * $size];
-    $wrist = [$root[0] + 7.6 * $size, $root[1] - 12.4 * $size];
-
-    // Meddig mehetünk a csuklóból? (2 egység szegélyt hagyva)
-    $rx  = max(6.0, 62.0 - $wrist[0]);
-    $ryU = max(6.0, $wrist[1] -  1.5);
-    $ryD = max(6.0, 46.0 - $wrist[1]);
-
-    // 0.55-ös szárny ~0.77, az 1.25-ös 1.0 arányban tölti ki a helyet
-    $fill = 0.58 + 0.34 * $size;
-
-    $tips = [];
-    for ($i = 0; $i < $fingers; $i++) {
-        $a  = -0.70 + 2.16 * $i / $d;
-        $ca = cos($a);
-        $sa = sin($a);
-        $ry = $sa < 0 ? $ryU : $ryD;
-        // Az irányhoz tartozó peremtávolság
-        $L  = 1.0 / sqrt(($ca / $rx) ** 2 + ($sa / $ry) ** 2);
-        $L *= $fill * (1.0 - 0.06 * $i / $d);
-        $tips[] = [$wrist[0] + $ca * $L, $wrist[1] + $sa * $L];
-    }
-
-    // A vitorla hátsó sarka: a háton ül, oda fut le a szegélye
-    $heel = [$root[0] + 1.0, $root[1] + 6.0 * $size];
-
-    return ['elbow' => $elbow, 'wrist' => $wrist, 'tips' => $tips, 'heel' => $heel];
-}
-
-/**
- * Bőrszárny.
- *
- * Rétegek alulról: membrán -> panelárnyékok -> csontváz (felkar + ujjak)
- * -> karom. A membrán szegélye az ujjhegyek között BEHÚZÓDIK a csukló
- * felé; ettől lesz csipkés a kontúr a korábbi egyenes szakaszok helyett.
- *
- * $plain: csak a vitorla, csontváz és karom nélkül. A kettős szárny
- * HÁTSÓ lebenyéhez kell — ott a második csontváz sűrű fekete pókhálót
- * rajzolt az elsőre. Távolabbi szárny amúgy sem mutatja a bordáit.
- */
-function wing_bat_m(string $id, array $root, float $size, int $fingers,
-                    bool $torn, bool $plain = false): string
-{
-    $g = DG;
-    $f = wing_frame($root, $size, $fingers);
-    $tips  = $f['tips'];
-    $elbow = $f['elbow'];
-    $wrist = $f['wrist'];
-    $heel  = $f['heel'];
-    $last  = count($tips) - 1;
-
-    /* --- Membrán --- */
-    // Vezetőél: váll -> felkar-ív -> csukló -> első ujjhegy
-    $m = 'M' . fmtp($root)
-       . 'Q' . fmtp($elbow) . ' ' . fmtp($wrist)
-       . 'Q' . fmt($wrist[0] + ($tips[0][0] - $wrist[0]) * 0.45 - 1.4) . ','
-             . fmt($wrist[1] + ($tips[0][1] - $wrist[1]) * 0.45 - 1.4) . ' '
-             . fmtp($tips[0]);
-
-    // Csipkeívek: a vezérlőpont a csukló felé húzva -> homorú szegély
-    for ($i = 1; $i <= $last; $i++) {
-        $a = $tips[$i - 1]; $b = $tips[$i];
-        $mx = ($a[0] + $b[0]) / 2;
-        $my = ($a[1] + $b[1]) / 2;
-        $m .= 'Q' . fmt($mx + ($wrist[0] - $mx) * 0.22) . ','
-                  . fmt($my + ($wrist[1] - $my) * 0.22) . ' ' . fmtp($b);
-    }
-
-    // Hátsó szegély: utolsó ujjhegy -> sarok -> váll
-    $m .= 'Q' . fmt(($tips[$last][0] + $heel[0]) / 2 + 2.6) . ','
-              . fmt(($tips[$last][1] + $heel[1]) / 2 + 1.6) . ' ' . fmtp($heel)
-        . 'Q' . fmt($root[0] - 1.6) . ',' . fmt($root[1] + 3.4) . ' ' . fmtp($root) . 'Z';
-
-    if ($torn) {
-        for ($i = 0; $i < $last; $i++) {
-            $a = $tips[$i]; $b = $tips[$i + 1];
-            $c = [($a[0] + $b[0]) / 2, ($a[1] + $b[1]) / 2];
-            $m .= 'M' . fmt($c[0] + 0.6) . ',' . fmt($c[1] + 0.6)
-                . 'L' . fmt($c[0] + ($wrist[0] - $c[0]) * 0.55) . ','
-                      . fmt($c[1] + ($wrist[1] - $c[1]) * 0.55)
-                . 'L' . fmt($c[0] - 0.8) . ',' . fmt($c[1] + 3.4 * $size) . 'Z';
-        }
-    }
-
-    // Panelenkénti árnyalás: enélkül a membrán egyetlen lapos folt
-    $panels = '';
-    foreach ($tips as $t) {
-        $panels .= 'M' . fmtp($wrist) . 'L' . fmtp($t);
-    }
-    $panels .= 'M' . fmtp($root) . 'L' . fmtp($wrist);
-
-    if ($plain) {
-        return '<path d="' . $m . '" fill-rule="evenodd" fill="' . $g['mid'] . '" stroke="' . $g['ink']
-             . '" stroke-width="1.2" stroke-linejoin="round" opacity="0.9"/>';
-    }
-
-    $membrane = '<defs><clipPath id="' . $id . '-mclip"><path d="' . $m . '" clip-rule="evenodd"/></clipPath></defs>'
-        . '<path d="' . $m . '" fill-rule="evenodd" fill="url(#' . $id . '-membrane)" stroke="' . $g['ink']
-        . '" stroke-width="1.6" stroke-linejoin="round"/>'
-        . '<g clip-path="url(#' . $id . '-mclip)">'
-        . '<path d="' . $m . '" fill-rule="evenodd" fill="none" stroke="' . $g['ink']
-        . '" stroke-width="5" opacity="0.10"/>'
-        . '<path d="' . $panels . '" fill="none" stroke="' . $g['shadow']
-        . '" stroke-width="2.2" opacity="0.13"/>'
-        . '<path d="' . $panels . '" fill="none" stroke="' . $g['bright']
-        . '" stroke-width="0.6" opacity="0.4"/>'
-        . '</g>';
-
-    /* --- Csontváz: a felkar és az ujjak saját tömegként --- */
-    $armSp = spine([[
-        $root,
-        [$root[0] + 1.0 * $size, $root[1] - 4.0 * $size],
-        [$elbow[0] + 1.0 * $size, $elbow[1] - 2.0 * $size],
-        $wrist,
-    ]], 10);
-    $bones = [outline_path($armSp, wsteps([2.6 * $size, 1.9 * $size, 1.5 * $size]), true, true)];
-
-    foreach ($tips as $i => $t) {
-        // Az ujjak enyhén hátrahajlanak — az egyenes pálcika merev
-        $bend = 1.6 * $size * (1.0 - $i / max(1, $last));
-        $sp = spine([[
-            $wrist,
-            [$wrist[0] + ($t[0] - $wrist[0]) * 0.35 + $bend,
-             $wrist[1] + ($t[1] - $wrist[1]) * 0.35 - $bend],
-            [$wrist[0] + ($t[0] - $wrist[0]) * 0.72 + $bend * 0.5,
-             $wrist[1] + ($t[1] - $wrist[1]) * 0.72 - $bend * 0.5],
-            $t,
-        ]], 10);
-        $bones[] = outline_path($sp, wsteps([1.55 * $size, 1.0 * $size, 0.42 * $size]), true, true);
-    }
-
-    // Hüvelykkarom a csuklón
-    $claw = '<path d="M' . fmt($wrist[0] - 0.8) . ',' . fmt($wrist[1] - 1.4)
-          . 'Q' . fmt($wrist[0] + 1.8) . ',' . fmt($wrist[1] - 3.4) . ' '
-          . fmt($wrist[0] + 3.2) . ',' . fmt($wrist[1] - 4.8)
-          . 'Q' . fmt($wrist[0] + 1.6) . ',' . fmt($wrist[1] - 2.2) . ' '
-          . fmt($wrist[0] + 1.3) . ',' . fmt($wrist[1] - 0.4) . 'Z" fill="' . $g['bright']
-          . '" stroke="' . $g['ink'] . '" stroke-width="0.7" stroke-linejoin="round"/>';
-
-    // Vékony körvonal: 1.3-nál a tinta többet foglalt, mint maga a csont,
-    // és a szárny fekete kuszaságnak látszott a színezett sárkányon.
-    return $membrane . assemble($id . '-arm', $bones, 'url(#' . $id . '-vol)', '', '', $claw, 0.85);
-}
-
-/** Tollas szárny: egymásra csúsztatott tollak, saját árnyékkal. */
-function wing_feather_m(string $id, array $root, float $size, int $fingers): string
-{
-    $g = DG;
-    $count = max(6, $fingers + 2);
-    $shapes = [];
-
-    for ($i = $count - 1; $i >= 0; $i--) {
-        $a = -1.44 + 1.30 * $i / ($count - 1);
-        $len = 27.0 * $size * (1.0 - 0.17 * $i / ($count - 1));
-        $tip = [$root[0] + cos($a) * $len, $root[1] + sin($a) * $len];
-        $shapes[] = teardrop($root[0], $root[1], $tip[0], $tip[1], 3.2 * $size, 0.55);
-    }
-
-    $shoulder = ellipse_path($root[0], $root[1], 3.4 * $size, 3.0 * $size, 0);
-
-    // Tollanként külön körvonal, hogy elváljanak egymástól
-    $out = '';
-    foreach ($shapes as $s) {
-        $out .= '<path d="' . $s . '" fill="url(#' . $id . '-membrane)" stroke="' . $g['ink']
-              . '" stroke-width="1.1" stroke-linejoin="round"/>';
-    }
-    // A szárnytőnél nem korong van, hanem a tollak alá bújó izomtömeg
-    return '<path d="' . $shoulder . '" fill="' . $g['dark'] . '" stroke="' . $g['ink']
-         . '" stroke-width="1.2" stroke-linejoin="round"/>' . $out;
-}
-
-/** Rovarszárny: két áttetsző lebeny, sűrű erezettel. */
-function wing_insect_m(string $id, array $root, float $size): string
-{
-    $g = DG;
-    $lobes = $veins = '';
-
-    foreach ([[-1.28, 26.0, 6.6], [-0.58, 20.5, 5.4]] as [$a, $len, $w]) {
-        $L = $len * $size;
-        $tip = [$root[0] + cos($a) * $L, $root[1] + sin($a) * $L];
-        $lobes .= teardrop($root[0], $root[1], $tip[0], $tip[1], $w * $size, 0.5);
-
-        for ($i = 1; $i <= 4; $i++) {
-            $f = $i / 5;
-            $veins .= 'M' . fmtp($root) . 'Q'
-                    . fmt($root[0] + ($tip[0] - $root[0]) * 0.55 - sin($a) * $w * $size * (0.7 - $f)) . ','
-                    . fmt($root[1] + ($tip[1] - $root[1]) * 0.55 + cos($a) * $w * $size * (0.7 - $f)) . ' '
-                    . fmt($root[0] + ($tip[0] - $root[0]) * (0.5 + $f * 0.5)) . ','
-                    . fmt($root[1] + ($tip[1] - $root[1]) * (0.5 + $f * 0.5));
-        }
-    }
-
-    return '<path d="' . $lobes . '" fill="url(#' . $id . '-membrane)" opacity="0.8" stroke="' . $g['ink']
-         . '" stroke-width="1.3" stroke-linejoin="round"/>'
-         . '<path d="' . $veins . '" fill="none" stroke="' . $g['bright'] . '" stroke-width="0.5" opacity="0.65"/>';
-}
-
-/** Uszonyszárny: rövid, széles, vaskos sugarakkal. */
-function wing_fin_m(string $id, array $root, float $size, int $fingers): string
-{
-    $g = DG;
-    $tips = wing_tips($root, $size, max(3, $fingers), 16.0);
-
-    $m = 'M' . fmtp($root) . 'Q' . fmt($root[0] - 1.2) . ',' . fmt($root[1] - 10.0 * $size) . ' ' . fmtp($tips[0]);
-    for ($i = 1; $i < count($tips); $i++) {
-        $a = $tips[$i - 1]; $b = $tips[$i];
-        $mx = ($a[0] + $b[0]) / 2 - ($b[1] - $a[1]) * 0.3;
-        $my = ($a[1] + $b[1]) / 2 + ($b[0] - $a[0]) * 0.3;
-        $m .= 'Q' . fmt($mx) . ',' . fmt($my) . ' ' . fmtp($b);
-    }
-    $m .= 'Z';
-
-    $rays = [];
-    foreach ($tips as $t) {
-        $sp = spine([[$root, [$root[0] + 1, $root[1] - 2], [$t[0], $t[1] + 2], $t]], 6);
-        $rays[] = outline_path($sp, wsteps([1.6 * $size, 1.0 * $size, 0.5 * $size]), true, true);
-    }
-
-    return '<path d="' . $m . '" fill="url(#' . $id . '-membrane)" stroke="' . $g['ink']
-         . '" stroke-width="1.5" stroke-linejoin="round"/>'
-         . assemble($id . '-rays', $rays, $g['light'], '', '', '', 1.2);
-}
-
-/** Kristályszárny: csiszolt lapok, élükön csillanással. */
-function wing_crystal_m(string $id, array $root, float $size, int $fingers): string
-{
-    $g = DG;
-    $tips = wing_tips($root, $size, max(3, $fingers), 23.5);
-
-    $facets = '';
-    foreach ($tips as $i => $t) {
-        $prev = $i > 0 ? $tips[$i - 1] : [$root[0] - 2, $root[1] - 8 * $size];
-        $mid = [($root[0] + $prev[0] + $t[0]) / 3 + 1.4, ($root[1] + $prev[1] + $t[1]) / 3];
-        $facets .= 'M' . fmtp($root) . 'L' . fmtp($prev) . 'L' . fmtp($mid) . 'L' . fmtp($t) . 'Z';
-    }
-
-    $edges = '';
-    foreach ($tips as $t) $edges .= 'M' . fmtp($root) . 'L' . fmtp($t);
-
-    return '<path d="' . $facets . '" fill="url(#' . $id . '-membrane)" stroke="' . $g['ink']
-         . '" stroke-width="1.4" stroke-linejoin="round"/>'
-         . '<path d="' . $edges . '" fill="none" stroke="' . $g['spec'] . '" stroke-width="0.9" opacity="0.7"/>';
+    $g  = DG;
+    $body = match ($n) {
+        1  => wing_bat($id, ['elbow' => [38.6, 21], 'wrist' => [42, 16.6], 'tips' => [[39.6, 10.4], [46.6, 11.4], [50.4, 16.6]], 'attach' => [47, 25], 'scallop' => 0.25, 'arm' => [2.0, 1.5], 'finger' => 1.0, 'claws' => false, 'far' => false]),
+        2  => wing_bat($id, ['elbow' => [38.8, 19.4], 'wrist' => [43, 13], 'tips' => [[44, 1.2], [54, 3], [60.6, 10.6]], 'attach' => [56, 25]]),
+        3  => wing_bat($id, ['elbow' => [38.6, 18.6], 'wrist' => [42.6, 12], 'tips' => [[40.4, 0.8], [50.6, 0.6], [59, 4.6], [63, 13], [62, 21.4]], 'attach' => [57, 26], 'scallop' => 0.34]),
+        4  => wing_crystals($id, [[[41, 1.6], 3.6, null], [[48.6, 2.4], 4.0, null], [[55.6, 7.4], 3.8, null], [[59.6, 14.4], 3.2, null], [[57.4, 21], 2.6, null], [[45, 9], 2.6, [40, 18]]]),
+        5  => wing_bat($id, ['elbow' => [38.8, 19], 'wrist' => [43, 12.6], 'tips' => [[42, 1], [52, 1.6], [59.6, 7.6], [62, 16.4]], 'attach' => [56, 25], 'jag' => 2.0,
+                             'holes' => [[49, 10.4, 1.6], [53.4, 15.6, 1.2], [46.4, 17, 1.0]], 'veins' => false]),
+        6  => wing_feathers($id, ['n' => 7, 'len' => 21, 'jag' => true, 'spread' => [-1.35, -0.1]]),
+        7  => wing_bat($id, ['elbow' => [38.4, 18], 'wrist' => [42.4, 10.6], 'tips' => [[38.6, 0.6], [48.6, 0.4], [57.6, 3], [62.8, 10.6], [63, 19.6]], 'attach' => [58, 26.4], 'arm' => [2.5, 1.8], 'finger' => 1.0,
+                             'tears' => [[[52, 14], [55.6, 17]]]]),
+        8  => wing_bat($id, ['elbow' => [38.8, 19], 'wrist' => [43, 12.6], 'tips' => [[42.4, 1], [52.4, 1.6], [59.6, 7.6], [62, 15.6]], 'attach' => [56, 24.6], 'jag' => 2.6, 'tatters' => 5, 'veins' => false]),
+        9  => wing_bat($id, ['elbow' => [38.8, 18.6], 'wrist' => [43, 12], 'tips' => [[41.6, 0.6], [52, 1], [60, 6.6], [63, 15]], 'attach' => [57, 25], 'scallop' => 0.22, 'facets' => true, 'veins' => false]),
+        10 => wing_feathers($id, ['n' => 8, 'len' => 22, 'spread' => [-1.4, -0.05]]),
+        11 => wing_insect($id, [[[52, 3], 4.4, 0.06, $g['bright']], [[58.6, 10.6], 4.2, 0.08, $g['light']], [[60, 19], 3.4, 0.05, $g['bright']]]),
+        12 => wing_fin($id, 16, 7, -2.0, -0.35),
+        13 => wing_bat($id . 'a', ['elbow' => [38.4, 21.6], 'wrist' => [43, 18.4], 'tips' => [[47, 14.6], [53.4, 17.4], [56, 22.6]], 'attach' => [51, 26.4], 'arm' => [1.7, 1.2], 'far' => false, 'gid' => $id])
+            . wing_bat($id, ['elbow' => [39.4, 17.4], 'wrist' => [43.6, 10.4], 'tips' => [[39.6, 3.4], [48, 4.4], [52.4, 10]], 'attach' => [49, 22], 'far' => false]),
+        14 => wing_crystals($id, [[[38.6, 0.8], 3.2, [37, 24]], [[45, 0.4], 4.2, null], [[52.4, 3.2], 4.6, null], [[58.6, 8.6], 4.4, null], [[61.6, 15.6], 3.8, null], [[60, 21.6], 3, null], [[51, 10], 3.0, [44, 16]]]),
+        15 => wing_bat($id, ['elbow' => [38.8, 18.8], 'wrist' => [43, 12.4], 'tips' => [[42, 1], [52, 1.4], [59.6, 7.4], [62.4, 15.4]], 'attach' => [56.4, 25],
+                             'holes' => [[47.6, 6.6, 1.8], [53.6, 12.6, 2.2], [49.6, 18.4, 1.4]], 'tears' => [[[42.4, 5], [45, 9.6]], [[57, 10.6], [54.6, 15]]], 'scallop' => 0.42]),
+        16 => wing_bat($id, ['elbow' => [37.6, 23.6], 'wrist' => [40, 20.6], 'tips' => [[39.6, 16.4], [44, 17.6], [45.6, 21.4]], 'attach' => [43, 26.4], 'arm' => [1.7, 1.2], 'finger' => 1.1, 'claws' => false, 'thumb' => false, 'far' => false, 'veins' => false]),
+        17 => wing_insect($id, [[[56, 4.4], 6.4, -0.32, $g['light']], [[61, 14.6], 5.2, -0.3, $g['mid']]]),
+        default => wing_bat($id, ['elbow' => [38.4, 18.4], 'wrist' => [42.4, 11.6], 'tips' => [[38.6, 0.8], [47.4, 0.4], [55.4, 2.4], [61, 8.4], [63.2, 17], [62, 26]], 'attach' => [57, 31], 'scallop' => 0.2]),
+    };
+    return '<g id="' . $id . '">' . $body . '</g>';
 }

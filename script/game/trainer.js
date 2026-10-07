@@ -11,7 +11,7 @@
    Minden a mentett állásba kerül (save.learned, save.train), a
    tapasztalat pedig a szerverre is (xp végpont), mint a csatáknál.
    ===================================================================== */
-import { TECHNIQUES, TRAIN, SKILLS, drillCost, techSlots, levelOf, MAX_ENERGY } from './rules.js';
+import { TECHNIQUES, TRAIN, SKILLS, COMBOS, ELEMENTS, drillCost, techSlots, levelOf, MAX_ENERGY } from './rules.js';
 import { esc } from './hud.js';
 
 /** A tanítóhelyek fejléce (a völgyben szétszórt mesterek). */
@@ -162,6 +162,12 @@ export class Trainer {
       <div class="tr-known">
         <div class="tr-slot is-innate"><span class="tr-rune">${innate.rune}</span>
           <div><b>${esc(innate.name)}</b><small>A fej ereje — ${esc(innate.desc)}</small></div></div>
+        ${s.combo ? (() => {
+          const c = COMBOS[s.combo.key];
+          const els = [s.combo.primary, s.combo.secondary].filter((e, i, a) => a.indexOf(e) === i).map((e) => `${ELEMENTS[e].icon} ${ELEMENTS[e].name}`).join(' + ');
+          return `<div class="tr-slot is-innate" style="--c:#${c.color.toString(16).padStart(6, '0')}"><span class="tr-rune">${c.rune}</span>
+            <div><b>${esc(c.name)}</b><small>Az összetétel ereje (${esc(els)}, rezonancia ${s.combo.resonance}/4) — ${esc(c.desc)}</small></div></div>`;
+        })() : ''}
         ${slotHtml}
       </div>
       ${free ? '<p class="gm-good">Ragnhild ajándéka: az első lecke <b>ingyenes</b>.</p>' : ''}

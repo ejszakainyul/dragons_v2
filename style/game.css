@@ -33,7 +33,6 @@ body.game-page .site-footer { display: none; }
 .hud-panel,
 .hud-dragon,
 .hud-chip,
-.hud-minimap,
 .battle-panel {
   background: linear-gradient(180deg, rgba(34, 44, 74, .92), rgba(9, 13, 26, .94));
   border: 1px solid rgba(138, 150, 184, .32);
@@ -144,17 +143,80 @@ body.game-page .site-footer { display: none; }
 }
 
 /* --- Kistérkép (jobb alul) ------------------------------------------- */
-.hud-minimap {
+.hud-map {
   position: absolute;
   right: 14px;
   bottom: 14px;
-  width: 200px;
-  height: 150px;
-  padding: 4px;
-  border-radius: 10px;
-  image-rendering: pixelated;
-  cursor: crosshair;
+  width: 236px;
+  height: 177px;
+  padding: 5px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #6b5a3e, #2c2418 45%, #4a3c28);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 220, 160, .25);
+  pointer-events: auto;
 }
+.hud-minimap {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  cursor: crosshair;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .6);
+  background: #0a0c16;
+}
+.hud-map::after {   /* belső árnyék a térkép peremén */
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 10px 1px rgba(6, 8, 16, .45), inset 0 0 0 1px rgba(0, 0, 0, .6);
+  pointer-events: none;
+}
+.hud-map-n {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f4d9a0, #9a7440);
+  color: #2a1a0a;
+  font: 700 .72rem Cinzel, serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .6);
+  pointer-events: none;
+  z-index: 1;
+}
+.hud-map-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 220, 160, .45);
+  background: rgba(20, 16, 10, .78);
+  color: #f4d9a0;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.hud-map-btn:hover { background: rgba(60, 44, 24, .9); color: #fff; }
+/* Világtérkép a párbeszédablakban */
+.wm-wrap { border-radius: 12px; overflow: hidden; border: 3px solid #5a4a32; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+.wm-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+.wm-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: .82rem; color: var(--muted); }
+.wm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.wm-legend i { display: inline-block; width: 12px; height: 12px; border: 2px solid #0b0f1c; border-radius: 3px; }
+.lg-cave { background: #ff5d6c; border-radius: 6px 6px 2px 2px !important; }
+.lg-cave.is-done { background: #5ed49a; }
+.lg-home { background: #ff8a3d; }
+.lg-shrine { background: #c28cff; transform: rotate(45deg); }
+.lg-nest { background: #ffe0a8; border-radius: 50% !important; }
+.lg-stone { background: #6fffe6; }
+.lg-npc { background: #ffe7c2; border-radius: 50% !important; }
+.lg-target { background: transparent; border-color: #ffd08a !important; border-radius: 50% !important; }
+.wm-hint { margin: 8px 0 0; font-size: .8rem; }
 
 /* --- Felszólítás (alul középen) -------------------------------------- */
 .hud-prompt {
@@ -211,7 +273,7 @@ kbd {
 .hud-toast small { display: block; color: var(--muted); }
 
 /* Harc közben a völgy felülete elrejtőzik */
-.game-shell.in-battle .hud-minimap,
+.game-shell.in-battle .hud-map,
 .game-shell.in-battle .hud-prompt,
 .game-shell.in-battle .hud-area,
 .game-shell.in-battle .hud-quest,
@@ -496,7 +558,8 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
   .hud-res { top: 8px; right: 8px; gap: 5px; flex-direction: column; align-items: flex-end; }
   .hud-chip { padding: 5px 9px; font-size: .85rem; }
   .hud-icon-btn { width: 34px; height: 34px; }
-  .hud-minimap { width: 128px; height: 96px; right: 8px; bottom: 8px; }
+  .hud-map { width: 150px; height: 113px; right: 8px; bottom: 8px; padding: 4px; }
+  .hud-map-btn { top: 7px; right: 7px; width: 24px; height: 24px; font-size: .85rem; }
   .hud-area { top: auto; bottom: 172px; font-size: 1rem; }
   .hud-prompt { bottom: 116px; }
   .battle-panel { bottom: 6px; padding: 8px; }
@@ -637,8 +700,17 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
 .bp-chorus .bp-chorus-btn:not([disabled]) { animation: chorusBtn 1.1s ease-in-out infinite; }
 @keyframes chorusBtn { 50% { box-shadow: 0 0 22px rgba(255, 200, 100, .9); } }
 
+.gd-species { display: block; color: #c9b8f0; font-style: italic; font-size: .72rem; }
 .gd-tech { color: #ffd9a8; }
 .gd-tech i { color: #ffb347; }
+/* Kombinált képesség: a testrészek elemi összetételéből */
+.gd-combo { color: color-mix(in srgb, var(--c) 70%, #fff); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.gd-combo i { font-family: inherit; color: inherit; }
+.gd-els { margin-left: auto; display: inline-flex; gap: 1px; font-size: .72rem; }
+.gd-els span { opacity: .35; filter: grayscale(.6); }
+.gd-els span.on { opacity: 1; filter: none; }
+.bp-buttons .bp-combo { box-shadow: inset 0 0 14px color-mix(in srgb, var(--c) 28%, transparent); }
+.bp-buttons .bp-combo .bp-els { font-size: .95em; letter-spacing: -1px; }
 .gd-ranks { display: flex; gap: 8px; margin-top: 3px; font-size: .74rem; color: #d9b45a; }
 
 /* =====================================================================
@@ -1069,3 +1141,397 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
 .tr-shrine-note { font-size: .82rem; color: #a9f1de; }
 .tr-tech.is-hidden { opacity: .62; border-style: dashed; }
 .tr-tech.is-hidden small b { color: #ffd08a; }
+
+/* =====================================================================
+   A saga vége — animált zárókép (script/game/ending.js)
+   ===================================================================== */
+.end-screen {
+  position: absolute; inset: 0; z-index: 60; overflow: hidden;
+  background: #000; cursor: pointer; opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.end-screen.is-in { opacity: 1; }
+.end-screen.is-out { opacity: 0; transition-duration: .8s; }
+.es-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.es-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 35%, rgba(0,0,0,.55) 100%);
+}
+.es-content {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(6px, 1.6vh, 16px); padding: 16px; text-align: center; color: #f4ead2;
+}
+/* minden elem rejtve indul, és elmosódásból emelkedik elő */
+.es-content > * { opacity: 0; transform: translateY(18px); filter: blur(8px); transition: opacity 1.1s ease, transform 1.1s cubic-bezier(.2,.8,.2,1), filter 1.1s ease; }
+.es-content > .is-on { opacity: 1; transform: none; filter: none; }
+
+.es-sigil { width: clamp(84px, 17vh, 190px); height: auto; overflow: visible; }
+.es-sigil.is-on { animation: es-spin 60s linear 3s infinite; }
+.es-ring { fill: none; stroke: #ffd36b; stroke-width: 1.6; stroke-dasharray: 600; stroke-dashoffset: 600; filter: drop-shadow(0 0 4px #ffb347); }
+.es-ring-2 { stroke: #4fffe0; stroke-dasharray: 4 6; filter: drop-shadow(0 0 4px #4fffe0); }
+.es-ring-3 { stroke-width: 1; }
+.es-sigil.is-on .es-ring { animation: es-draw 2.2s ease forwards; }
+.es-sigil.is-on .es-ring-2 { animation: es-dash 2.2s ease .3s forwards, es-ring-spin 12s linear infinite; transform-origin: 100px 100px; }
+.es-sigil.is-on .es-ring-3 { animation-delay: .6s; }
+.es-spoke { stroke: #4fffe0; stroke-width: 2; stroke-linecap: round; opacity: 0; }
+.es-sigil.is-on .es-spoke { animation: es-pop .4s ease forwards; animation-delay: calc(1s + var(--i) * 70ms); }
+.es-glyph {
+  font-family: var(--font-rune); font-size: 64px; fill: #ffe9b0; text-anchor: middle; dominant-baseline: central;
+  opacity: 0; filter: drop-shadow(0 0 10px #ffb347);
+}
+.es-sigil.is-on .es-glyph { animation: es-glyph 1.6s ease 1.6s forwards, es-pulse 3s ease-in-out 3.2s infinite; }
+
+.es-kicker { font-family: 'Cinzel', serif; letter-spacing: .3em; text-transform: uppercase; font-size: clamp(.7rem, 1.6vh, .9rem); color: #4fffe0; text-shadow: 0 0 10px rgba(79,255,224,.6); }
+.es-title {
+  margin: 0; font-family: 'Cinzel Decorative', 'Cinzel', serif; font-weight: 900;
+  font-size: clamp(30px, min(7vw, 9vh), 84px); line-height: 1; letter-spacing: .06em;
+  opacity: 1 !important; transform: none !important; filter: none !important;      /* a betűk animálnak, nem a sor */
+}
+.es-title span {
+  display: inline-block; opacity: 0; transform: translateY(-24px) scale(1.7); filter: blur(10px);
+  background: linear-gradient(100deg, #b8862e 0%, #ffe9a8 35%, #fff 50%, #ffe9a8 65%, #b8862e 100%);
+  background-size: 300% 100%; background-position: 100% 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 22px rgba(255,200,110,.0);
+}
+.es-title.is-on span {
+  animation: es-letter .8s cubic-bezier(.2,.9,.25,1.2) forwards, es-shine 4.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 85ms), calc(1.6s + var(--i) * 60ms);
+}
+.es-quote { max-width: 46ch; font-style: italic; font-size: clamp(.85rem, 2vh, 1.1rem); color: #e9dcc0; text-shadow: 0 2px 10px #000; }
+
+.es-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.es-stat {
+  min-width: 92px; padding: 8px 12px; border-radius: 12px;
+  background: rgba(10,8,24,.55); border: 1px solid rgba(255,211,107,.35); backdrop-filter: blur(4px);
+  box-shadow: 0 0 18px rgba(255,180,90,.12) inset;
+}
+.es-stat b { display: block; font-family: 'Cinzel', serif; font-size: clamp(1.2rem, 3vh, 1.7rem); color: #ffd36b; font-variant-numeric: tabular-nums; }
+.es-stat span { font-size: .75rem; color: #cfc3a8; letter-spacing: .05em; }
+
+.es-party { display: flex; gap: clamp(10px, 3vw, 34px); justify-content: center; }
+.es-dragon { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; transform: translateY(26px); }
+.es-party.is-on .es-dragon { animation: es-rise .9s cubic-bezier(.2,.8,.2,1) forwards, es-float 3.2s ease-in-out infinite; animation-delay: calc(var(--i) * 220ms), calc(1s + var(--i) * 400ms); }
+.es-dragon img {
+  width: clamp(54px, 10vh, 92px); height: clamp(54px, 10vh, 92px); border-radius: 50%; object-fit: contain;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 45%, transparent) 0%, rgba(0,0,0,0) 70%);
+  border: 2px solid color-mix(in srgb, var(--c) 70%, #fff); box-shadow: 0 0 22px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.es-dragon figcaption b { display: block; font-family: 'Cinzel', serif; font-size: .9rem; }
+.es-dragon figcaption small { color: #cfc3a8; font-size: .72rem; }
+
+.es-credits {
+  height: clamp(56px, 12vh, 130px); width: min(420px, 90vw); overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+}
+.es-credits.is-on .es-roll { animation: es-roll 18s linear infinite; }
+.es-roll { transform: translateY(100%); }
+.es-roll p { margin: 0 0 12px; font-size: .9rem; color: #f4ead2; }
+.es-roll small { display: block; font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: #a99cc8; }
+.es-roll .es-cr-head { font-family: 'Cinzel Decorative', 'Cinzel', serif; font-size: 1.1rem; color: #ffd36b; }
+.es-roll .es-cr-end { color: #4fffe0; font-family: 'Cinzel', serif; }
+
+.es-continue { pointer-events: none; }
+.es-continue.is-on { pointer-events: auto; animation: es-glow 2.4s ease-in-out 1s infinite; }
+.es-skip { position: absolute; right: 18px; bottom: 14px; margin: 0; font-size: .75rem; color: rgba(255,255,255,.45); animation: es-pulse 2s ease-in-out infinite; transition: opacity .5s; }
+.es-skip.is-off { opacity: 0; animation: none; }
+
+/* Kattintás után: minden azonnal a helyére kerül */
+.end-screen.is-skip .es-content > * { transition-duration: .35s; }
+.end-screen.is-skip .es-title span, .end-screen.is-skip .es-dragon, .end-screen.is-skip .es-spoke,
+.end-screen.is-skip .es-glyph, .end-screen.is-skip .es-ring { animation-delay: 0s !important; animation-duration: .4s; }
+.end-screen.is-skip .es-title span { animation: es-letter .4s ease forwards, es-shine 4.5s ease-in-out 1s infinite; }
+.end-screen.is-skip .es-dragon { animation: es-rise .4s ease forwards, es-float 3.2s ease-in-out 1s infinite; }
+
+@keyframes es-draw { to { stroke-dashoffset: 0; } }
+@keyframes es-dash { from { opacity: 0; } to { opacity: 1; stroke-dashoffset: 0; } }
+@keyframes es-ring-spin { to { transform: rotate(360deg); } }
+@keyframes es-spin { to { transform: rotate(-360deg); } }
+@keyframes es-pop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes es-glyph { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes es-pulse { 50% { opacity: .55; } }
+@keyframes es-letter {
+  60% { opacity: 1; filter: blur(0); text-shadow: 0 0 30px rgba(255,220,140,.9); }
+  to { opacity: 1; transform: none; filter: blur(0); text-shadow: 0 0 18px rgba(255,190,100,.45); }
+}
+@keyframes es-shine { 0%, 55% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@keyframes es-rise { to { opacity: 1; transform: none; } }
+@keyframes es-float { 50% { translate: 0 -8px; } }
+@keyframes es-roll { from { transform: translateY(100%); } to { transform: translateY(-100%); } }
+@keyframes es-glow { 50% { box-shadow: 0 0 26px rgba(255,180,90,.7); } }
+@media (prefers-reduced-motion: reduce) {
+  .es-content > *, .es-title span, .es-dragon { transition-duration: .01s; animation-duration: .01s !important; animation-iteration-count: 1 !important; }
+}
+
+@media (max-width: 520px) {
+  .es-stat { min-width: 70px; padding: 5px 8px; }
+  .es-stats { gap: 6px; }
+  .es-credits { height: 48px; }
+}
+.hud-icon-btn.is-off { opacity: .45; text-decoration: line-through; }
+.hud-clock b { color: #dfe6ff; font-size: .82rem; white-space: nowrap; }
+@media (max-width: 640px) { .hud-clock { display: none; } }
+
+/* =====================================================================
+   FARAGOTT FELÜLET — a renderelt világhoz illő, megvilágított panelek
+   ---------------------------------------------------------------------
+   Ugyanaz a fény, mint a sárkányokon és a völgyön: bal felülről jön.
+   Minden panel egy palakő-lap: felül világos, alul sötét peremmel
+   (vastagsága van), belül vékony sárgaréz szegély, a sarkokban szegecs.
+   A gombok domborúak és lenyomhatók, a sávok bemélyített vájatok.
+   ===================================================================== */
+.game-shell {
+  --gx-top: #3a4157;
+  --gx-mid: #212538;
+  --gx-bot: #12141f;
+  --gx-ink: #06070c;
+  --gx-brass: #c99a4e;
+  --gx-brass-hi: #ffe2a3;
+  --gx-brass-lo: #6e4f1f;
+  --gx-text: #f3e7cc;
+  --gx-face:
+    radial-gradient(130% 100% at 18% 0%, rgba(255, 236, 200, .11), transparent 55%),
+    repeating-linear-gradient(118deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 7px),
+    linear-gradient(180deg, var(--gx-top) 0%, var(--gx-mid) 52%, var(--gx-bot) 100%);
+  --gx-rivets:
+    radial-gradient(circle at 8px 8px, var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 8px) 8px, var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at 8px calc(100% - 8px), var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px);
+  --gx-bevel:
+    inset 0 1px 0 rgba(255, 240, 210, .24),
+    inset 0 -2px 0 rgba(0, 0, 0, .5),
+    inset 0 0 0 2px rgba(201, 154, 78, .34),
+    inset 0 0 0 3px rgba(0, 0, 0, .45);
+  --gx-drop: 0 4px 0 -1px rgba(0, 0, 0, .55), 0 14px 30px rgba(0, 0, 0, .55);
+}
+
+/* --- Panelek ------------------------------------------------------------ */
+.game-shell .hud-dragon,
+.game-shell .hud-chip,
+.game-shell .hud-quest,
+.game-shell .battle-panel,
+.game-shell .hud-toast,
+.game-shell .game-modal-card,
+.game-shell .gdl-card {
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), var(--gx-drop);
+  color: var(--gx-text);
+}
+.game-shell .hud-dragon,
+.game-shell .battle-panel,
+.game-shell .game-modal-card { background: var(--gx-rivets), var(--gx-face); }
+.game-shell .hud-dragon { border-radius: 12px; padding: 7px 14px 7px 7px; }
+.game-shell .hud-dragon-name b { color: #ffeccc; text-shadow: 0 1px 0 #000; }
+.game-shell .hud-dragon-name span { color: var(--gx-brass-hi); }
+
+/* a portré: sárgaréz keretű, belülről megvilágított medalion */
+.game-shell .hud-dragon img,
+.game-shell .bp-actor img,
+.game-shell .gd-card img {
+  border: 0;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 45% 35%, rgba(255, 226, 163, .2), transparent 60%),
+    radial-gradient(circle at 50% 60%, #1c2134, #07080d);
+  box-shadow: 0 0 0 2px var(--gx-brass), 0 0 0 3px var(--gx-ink), inset 0 2px 6px rgba(0, 0, 0, .7), 0 3px 6px rgba(0, 0, 0, .5);
+}
+
+/* --- Sávok: bemélyített vájat, fényes töltet ------------------------------ */
+.game-shell .bar {
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #05060a, #13151f);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, .85), 0 1px 0 rgba(255, 240, 210, .14);
+}
+.game-shell .bar i { box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .25); }
+.game-shell .bar-hp i { background: linear-gradient(180deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 48%), linear-gradient(90deg, #13a86b, #2dd4a7 70%, #7cf0c9); }
+.game-shell .bar-hp em { line-height: 11px; font-weight: 700; }
+.game-shell .bar-xp { height: 5px; }
+.game-shell .bar-xp i { background: linear-gradient(180deg, rgba(255, 255, 255, .4), transparent 55%), linear-gradient(90deg, #6a46ff, #b18cff); }
+.game-shell .bp-chorus .bar { height: 12px; }
+
+/* --- Erőforrás-jelzők és ikongombok -------------------------------------- */
+.game-shell .hud-chip { border-radius: 10px; padding: 7px 13px; }
+.game-shell .hud-chip b { color: var(--gx-brass-hi); text-shadow: 0 1px 0 #000; }
+.game-shell .hud-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--gx-text);
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .6), 0 8px 16px rgba(0, 0, 0, .45);
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease), color .12s;
+}
+.game-shell .hud-icon-btn:hover { color: #fff; border-color: var(--gx-ink); box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .6), 0 0 18px rgba(255, 196, 107, .35); transform: translateY(-1px); }
+.game-shell .hud-icon-btn:active { transform: translateY(2px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .6), inset 0 0 0 2px rgba(201, 154, 78, .3); }
+.game-shell .hud-icon-btn .rune-ico { color: var(--gx-brass-hi); text-shadow: 0 0 8px rgba(255, 196, 107, .5); }
+.hud-burger { display: grid; gap: 3px; width: 16px; }
+.hud-burger i { display: block; height: 2px; border-radius: 2px; background: var(--gx-brass-hi); box-shadow: 0 1px 0 #000; }
+.game-shell .hud-menu-btn { background: radial-gradient(circle at 50% 30%, rgba(255, 196, 107, .18), transparent 70%), var(--gx-face); }
+
+/* --- Gombok a játékban: domború kő, lenyomható; a fő gomb izzó réz ------- */
+.game-shell .btn {
+  border: 1px solid var(--gx-ink);
+  border-radius: 10px;
+  background: var(--gx-face);
+  color: var(--gx-text);
+  box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .65), 0 8px 18px rgba(0, 0, 0, .4);
+  text-shadow: 0 1px 0 #000;
+}
+.game-shell .btn:hover { color: #fff; border-color: var(--gx-ink); box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .65), 0 0 22px rgba(255, 196, 107, .32); }
+.game-shell .btn:active { transform: translateY(2px); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .65), inset 0 0 0 2px rgba(201, 154, 78, .3); }
+.game-shell .btn-primary {
+  background:
+    radial-gradient(120% 100% at 25% 0%, rgba(255, 250, 225, .55), transparent 50%),
+    linear-gradient(180deg, #ffcf86 0%, #ff9442 48%, #c9501c 100%);
+  color: #1b0d03;
+  text-shadow: 0 1px 0 rgba(255, 228, 180, .6);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 220, .8), inset 0 -3px 0 rgba(110, 30, 0, .45), 0 3px 0 -1px #5a2208, 0 8px 22px rgba(255, 110, 40, .3);
+}
+.game-shell .btn-primary:hover { color: #1b0d03; box-shadow: inset 0 1px 0 rgba(255, 245, 220, .8), inset 0 -3px 0 rgba(110, 30, 0, .45), 0 3px 0 -1px #5a2208, 0 0 30px rgba(255, 140, 60, .55); }
+.game-shell .btn-danger { background: linear-gradient(180deg, #ff7a86, #c1273c); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 220, 220, .6), inset 0 -3px 0 rgba(80, 0, 10, .4), 0 3px 0 -1px #4a0812, 0 8px 18px rgba(0, 0, 0, .4); }
+.game-shell .bp-buttons .btn[disabled] { filter: grayscale(.8) brightness(.75); opacity: .55; }
+
+/* --- Harci panel ---------------------------------------------------------- */
+.game-shell .battle-panel { border-radius: 16px; padding: 12px 16px 14px; }
+.game-shell .bp-chip { border-radius: 9px; border-width: 2px; box-shadow: 0 2px 0 rgba(0, 0, 0, .6), inset 0 0 6px rgba(0, 0, 0, .6); background: radial-gradient(circle at 50% 40%, #222842, #07080d); }
+.game-shell .bp-chip.is-now { box-shadow: 0 0 0 2px var(--gx-ink), 0 0 16px rgba(255, 208, 138, .85); }
+.game-shell .bp-order::before,
+.game-shell .bp-chorus > span { color: var(--gx-brass); text-shadow: 0 1px 0 #000; }
+.game-shell .bp-energy i { background: radial-gradient(circle at 40% 35%, #3a4566, #141a2c); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .7); }
+.game-shell .bp-energy i.on { background: radial-gradient(circle at 40% 35%, #ffffff, #7ce7ff 45%, #2a9fd0); box-shadow: 0 0 8px #7ce7ff; }
+.game-shell .bp-hint { background: linear-gradient(180deg, rgba(255, 160, 80, .16), rgba(255, 120, 40, .06)); border: 1px solid rgba(255, 208, 138, .45); box-shadow: inset 0 1px 0 rgba(255, 240, 210, .15); }
+.game-shell .bp-log { border-top: 1px solid rgba(201, 154, 78, .2); padding-top: 6px; }
+
+/* --- Párbeszédablak: faragott tábla aranyozott címmel -------------------- */
+.game-shell .game-modal { background: radial-gradient(ellipse at center, rgba(3, 5, 12, .5), rgba(3, 5, 12, .88)); }
+.game-shell .game-modal-card {
+  border-radius: 18px;
+  padding: 28px 30px 24px;
+  box-shadow: var(--gx-bevel), inset 0 0 0 7px rgba(6, 7, 12, .35), inset 0 0 0 8px rgba(201, 154, 78, .18), 0 6px 0 -1px rgba(0, 0, 0, .6), 0 36px 90px rgba(0, 0, 0, .75);
+}
+.game-shell .game-modal-card h2 {
+  color: #ffe7c2;
+  text-shadow: 0 2px 0 #000, 0 0 22px rgba(255, 170, 90, .35);
+}
+.game-shell .game-modal-card > h2::after {
+  content: '';
+  display: block;
+  height: 12px;
+  margin-top: 8px;
+  background:
+    radial-gradient(circle, var(--gx-brass-hi) 0 2.5px, var(--gx-brass) 3.2px, transparent 4px) center / 12px 12px no-repeat,
+    linear-gradient(90deg, transparent, var(--gx-brass) 18%, var(--gx-brass-hi) 50%, var(--gx-brass) 82%, transparent) center / 100% 1px no-repeat;
+}
+.game-shell .gm-kicker { color: var(--gx-brass); text-shadow: 0 1px 0 #000; }
+.game-shell .gm-close {
+  top: 12px; right: 12px;
+  border-radius: 50%;
+  color: var(--gx-brass-hi);
+  background: radial-gradient(circle at 40% 30%, #3a4157, #12141f);
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .25), 0 0 0 2px rgba(201, 154, 78, .4), 0 3px 6px rgba(0, 0, 0, .5);
+}
+.game-shell .gm-close:hover { color: #fff; box-shadow: inset 0 1px 0 rgba(255, 240, 210, .25), 0 0 0 2px var(--gx-brass), 0 0 14px rgba(255, 196, 107, .5); }
+.game-shell .gd-card {
+  background: linear-gradient(180deg, rgba(58, 65, 87, .55), rgba(18, 20, 31, .85));
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .14), inset 0 0 0 1px rgba(201, 154, 78, .22), 0 3px 0 -1px rgba(0, 0, 0, .55);
+}
+.game-shell button.gd-card:hover { box-shadow: inset 0 1px 0 rgba(255, 240, 210, .14), inset 0 0 0 1px var(--gx-brass), 0 0 18px rgba(255, 196, 107, .25); }
+.game-shell .gd-card.is-selected { box-shadow: inset 0 0 0 2px var(--gx-brass-hi), 0 0 20px rgba(255, 196, 107, .4); }
+
+/* --- Értesítések, felszólítás, vidéknév ---------------------------------- */
+.game-shell .hud-toast { border-radius: 12px; padding: 11px 20px; border-left: 4px solid var(--gx-brass); }
+.game-shell .hud-toast.is-good { border-left-color: #2dd4a7; }
+.game-shell .hud-toast.is-warn { border-left-color: #ffc857; }
+.game-shell .hud-toast.is-bad  { border-left-color: #ff5d6c; }
+.game-shell .hud-area {
+  padding: 4px 34px 8px;
+  background:
+    linear-gradient(90deg, transparent, var(--gx-brass) 20%, var(--gx-brass-hi) 50%, var(--gx-brass) 80%, transparent) bottom / 100% 1px no-repeat,
+    radial-gradient(ellipse at center, rgba(6, 7, 12, .55), transparent 70%);
+}
+.game-shell .hud-quest { border-radius: 12px; }
+.game-shell .hud-quest small { color: var(--gx-brass); }
+
+/* --- Kistérkép: sárgaréz keret ------------------------------------------- */
+.game-shell .hud-map {
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), var(--gx-drop);
+}
+.game-shell .hud-map-btn { border-radius: 8px; background: var(--gx-face); border: 1px solid var(--gx-ink); box-shadow: var(--gx-bevel); color: var(--gx-brass-hi); }
+
+/* --- Játékmenü -------------------------------------------------------------- */
+.gmenu { display: grid; gap: 8px; margin-top: 6px; }
+.gmenu-item {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px 10px 10px;
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  color: var(--gx-text);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(58, 65, 87, .6), rgba(18, 20, 31, .9));
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .16), inset 0 0 0 1px rgba(201, 154, 78, .2), 0 3px 0 -1px rgba(0, 0, 0, .6);
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+}
+.gmenu-item:hover, .gmenu-item:focus-visible {
+  color: #fff;
+  outline: none;
+  transform: translateX(3px);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .2), inset 0 0 0 1px var(--gx-brass), 0 0 20px rgba(255, 196, 107, .25);
+}
+.gmenu-item:active { transform: translateY(2px); }
+.gmenu-item[disabled] { opacity: .4; cursor: not-allowed; transform: none; box-shadow: inset 0 0 0 1px rgba(201, 154, 78, .12); }
+.gmenu-item b { display: block; font-family: 'Cinzel', serif; font-size: .98rem; color: #ffeccc; }
+.gmenu-item small { display: block; font-size: .78rem; color: var(--muted); }
+.gmenu-rune {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-family: var(--font-rune);
+  font-style: normal;
+  font-size: 1.15rem;
+  color: #1b0d03;
+  background: radial-gradient(circle at 40% 32%, #fff3c8, #e8a54e 55%, #8a5a1e);
+  box-shadow: inset 0 -2px 0 rgba(90, 40, 0, .4), 0 0 0 2px var(--gx-ink), 0 0 12px rgba(255, 180, 90, .35);
+}
+.gmenu-item.is-exit .gmenu-rune { background: radial-gradient(circle at 40% 32%, #ffe0e0, #e06070 55%, #7a1828); }
+.gmenu-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(201, 154, 78, .25);
+  font-size: .78rem;
+  color: var(--muted);
+}
+.gmenu-keys kbd { margin-right: 2px; }
+
+/* Keskeny kijelzőn a ritkább gombok a menübe költöznek */
+@media (max-width: 720px) {
+  .game-shell #hudBook,
+  .game-shell #hudMusic,
+  .game-shell #hudMute,
+  .game-shell .hud-res a.hud-icon-btn { display: none; }
+  .game-shell .hud-icon-btn { width: 36px; height: 36px; }
+  .game-shell .game-modal-card { padding: 22px 16px 18px; }
+  .gmenu-item { padding: 8px 10px; grid-template-columns: 32px 1fr auto; }
+  .gmenu-rune { width: 32px; height: 32px; font-size: 1rem; }
+  .gmenu-keys { display: none; }
+}

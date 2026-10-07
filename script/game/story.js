@@ -20,6 +20,7 @@
 import { Dialogue, chapterCard } from './dialogue.js';
 import { esc } from './hud.js';
 import { ULTIMATES, RELICS } from './rules.js';
+import { playEnding } from './ending.js';
 
 /* =====================================================================
    Párbeszédek
@@ -101,6 +102,10 @@ export const SCRIPTS = {
   ],
   nidhoggrRage: [
     L('nidhoggr', '<b>ELÉG!</b> <em>A gyökér velem van — és a gyökér mindent elér!</em>'),
+  ],
+  nidhoggrWrath: [
+    L('nidhoggr', '<em>Érzed? A Világfa remeg. Ha nekem pusztulnom kell…</em>'),
+    L('nidhoggr', '<b>…HÁT VELEM PUSZTUL A VÖLGY IS!</b>'),
   ],
   nidhoggrFall: [
     L('nidhoggr', '<em>…a szikra… nem alszik ki…</em>'),
@@ -294,11 +299,12 @@ export class Story {
       whisper:      q?.id === 'cave3' && tier === 3,
       nidhoggr:     q?.id === 'cave5' && tier === 5,
       nidhoggrRage: tier === 5,
+      nidhoggrWrath: tier === 5,
       nidhoggrFall: q?.id === 'cave5' && tier === 5,
     }[kind];
     if (!when) return null;
-    // A dühkitörés minden csatában jár, a többi csak egyszer
-    if (kind !== 'nidhoggrRage') {
+    // A dühkitörések minden csatában járnak, a többi csak egyszer
+    if (kind !== 'nidhoggrRage' && kind !== 'nidhoggrWrath') {
       if (this.s.seen[kind]) return null;
       this.s.seen[kind] = 1;
     }
@@ -329,7 +335,17 @@ export class Story {
     }
   }
 
+  /** A saga vége: animált zárókép (ending.js); ha az nem sikerül, egyszerű ablak. */
   async #finale() {
+    try {
+      await playEnding(this.g);
+    } catch (e) {
+      console.warn('[játék] a zárókép nem indult:', e);
+      await this.#finaleCard();
+    }
+  }
+
+  async #finaleCard() {
     const { hud, state } = this.g;
     const st = state.save.stats;
     await new Promise((resolve) => {
@@ -402,7 +418,12 @@ export class Story {
       <h3 class="sb-side-title">Mellékszálak</h3>
       <ul class="sb-side">${side}</ul>
       ${this.done ? '' : `<p class="muted">A következő fejezetek még a nornák fonalán várnak.</p>`}
-      <div class="gm-actions"><button class="btn btn-primary" data-act="ok" type="button">Bezárás</button></div>`, { wide: true });
+      <div class="gm-actions">
+        ${this.done ? '<button class="btn" data-act="ending" type="button">ᛟ A saga vége — újra</button>' : ''}
+        <button class="btn btn-primary" data-act="ok" type="button">Bezárás</button>
+      </div>`, { wide: true });
     card.querySelector('[data-act="ok"]').onclick = () => hud.closeModal();
+    const again = card.querySelector('[data-act="ending"]');
+    if (again) again.onclick = () => { hud.closeModal(); this.#finale(); };
   }
 }

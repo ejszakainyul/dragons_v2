@@ -65,6 +65,7 @@ function game_catalog(): array
                 'size'   => (float)($meta['size'] ?? 1.0),
                 'secret' => $id === SECRET_PART_ID,
                 'img'    => part_src(PART_FILES[$slot] . '[' . $id . ']'),
+                'fx'     => part_fx_src(PART_FILES[$slot] . '[' . $id . ']'),
             ];
         }
     }

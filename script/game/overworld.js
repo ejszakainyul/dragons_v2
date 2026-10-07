@@ -14,8 +14,11 @@
    ===================================================================== */
 import { TILE, T, B } from './world.js';
 import { findPath } from './path.js';
-import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING } from './art.js';
-import { CAVES, SKILLS, levelOf, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
+import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING, FOOT_DX } from './art.js';
+import { peakSpots } from './terrain.js';
+import { fringeLayers } from './tiles.js';
+import { CAVES, SKILLS, levelOf, xpForLevel, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
+import { DayNight } from './daynight.js';
 import { esc } from './hud.js';
 import { LORE } from './lore.js';
 import { Trainer } from './trainer.js';
@@ -45,6 +48,14 @@ export class OverworldScene extends Phaser.Scene {
     const map = this.make.tilemap({ data: rows, tileWidth: TILE, tileHeight: TILE });
     const tiles = map.addTilesetImage('tiles', 'tiles', TILE, TILE, TILE_MARGIN, TILE_SPACING);
     this.groundLayer = map.createLayer(0, tiles, 0, 0).setDepth(0);
+
+    /* --- Szegélyek (tiles.js): a szomszéd vidék anyaga hullámosan rálóg a
+       csempére — külön, ritka csemperétegek, csak a látható cellák rajzolódnak */
+    fringeLayers(world).forEach((data, i) => {
+      const fm = this.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
+      const ft = fm.addTilesetImage('tiles', 'tiles', TILE, TILE, TILE_MARGIN, TILE_SPACING);
+      fm.createLayer(0, ft, 0, 0).setDepth(0.1 + i * 0.1);
+    });
 
     /* --- Köd ---
        Egy csempe = egy képpont egy apró vásznon, amit lineáris szűréssel
@@ -93,6 +104,12 @@ export class OverworldScene extends Phaser.Scene {
     this.keys = kb.addKeys('W,A,S,D,E,UP,DOWN,LEFT,RIGHT,SPACE,ENTER,SHIFT', false);
     kb.clearCaptures();            // a párbeszédablakok mezőibe lehessen gépelni
     kb.on('keydown', (e) => {
+      // M: világtérkép (nyitja/zárja)
+      if (e.key === 'm' || e.key === 'M') {
+        if (hud.worldMapOpen) hud.closeModal();
+        else if (!hud.modalOpen) { this.g.sfx.click(); hud.openWorldMap(); }
+        return;
+      }
       if (hud.modalOpen) return;
       // A párbeszédet lezáró billentyű ne nyisson rögtön új ablakot
       if (performance.now() - (this.g.story?.dialogue.closedAt || 0) < 300) return;
@@ -107,8 +124,15 @@ export class OverworldScene extends Phaser.Scene {
     /* --- Hangulat --- */
     this.#ambient();
     this.#questMarker();
+    this.daynight = new DayNight(this, this.g);
 
-    hud.initMinimap(world, (x, y) => this.#goTo(x, y));
+    hud.initMinimap(world, (x, y) => this.#goTo(x, y), (p) => this.#poiName(p));
+    hud.mapState = () => this.player && {
+      fog: this.fogBits, cleared: state.save.cleared, target: this.g.story?.target, heading: this.heading,
+      px: this.player.x / TILE - 0.5, py: (this.player.y - TILE / 2) / TILE,
+    };
+    this.heading = -Math.PI / 2;
+    this.mmAt = 0;
     this.lastTile = null;
     this.path = null;
     this.pendingPoi = null;
@@ -122,6 +146,7 @@ export class OverworldScene extends Phaser.Scene {
     this.time.addEvent({ delay: 5000, loop: true, startAt: 3000, callback: () => { if (this.ready) this.#spawnRoamers(); } });
     const openBook = () => { if (!hud.modalOpen) { this.g.sfx.click(); this.g.story.openBook(); } };
     hud.el.book?.addEventListener('click', openBook);
+    hud.menuBook = () => this.g.story.openBook();
     hud.el.quest?.addEventListener('click', openBook);
 
     this.events.on('wake', (_, result) => this.#onWake(result));
@@ -157,6 +182,12 @@ export class OverworldScene extends Phaser.Scene {
 
   #placeDecor() {
     const { world } = this;
+    // Hegycsúcsok a hegyvidék belsejében (egyetlen textúralapról: egy kötegben rajzolódnak)
+    if (this.textures.exists('peaks')) {
+      for (const pk of peakSpots(world)) {
+        this.add.image(pk.x, pk.y, 'peaks', `${pk.kind}${pk.v}-${pk.k}`).setOrigin(0.5, 1).setScale(pk.scale).setDepth(pk.y);
+      }
+    }
     for (const t of world.trees) {
       const key = t.kind === 'pine' ? `pine${t.v}` : t.kind === 'pine-snow' ? `pine-snow${t.v}` : `${t.kind}${t.v}`;
       const x = t.x * TILE + TILE / 2 + ((t.x * 7 + t.y * 13) % 9) - 4;
@@ -471,6 +502,8 @@ export class OverworldScene extends Phaser.Scene {
       if (Math.hypot(px - c.x, py - c.y) < 9) break;
       const tier = this.#roamTier(c.x, c.y);
       const d = makeRoamer(tier, this.g.state.tiers);
+      // Éjjel az éji vadak járnak: két szinttel erősebbek, de másfélszeres a zsákmány
+      if (this.daynight?.isNight) { d.night = true; d.nev = `Éji ${d.nev}`; d.xp = xpForLevel(levelOf(d.xp) + 2); }
       const keys = await dragonTextures(this.g.gfx, d, this.g.state.catalog, 128);
       if (!this.scene.isActive() && !this.scene.isSleeping()) return;
       const view = makeDragonView(this, keys, 76);
@@ -480,11 +513,11 @@ export class OverworldScene extends Phaser.Scene {
       cont.add([shadow, view]);
       const parts = view.getData('parts');
       const tag = this.add.text(0, -86, `${d.nev} · ${tier}. fok`, {
-        fontFamily: 'Cinzel, Georgia, serif', fontSize: '11px', fontStyle: '700', color: '#ffc2c2', stroke: '#0b0f1c', strokeThickness: 4,
+        fontFamily: 'Cinzel, Georgia, serif', fontSize: '11px', fontStyle: '700', color: d.night ? '#d8b8ff' : '#ffc2c2', stroke: '#0b0f1c', strokeThickness: 4,
       }).setOrigin(0.5);
       const alert = this.add.text(0, -104, '!', { fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: '900', color: '#ff5d6c', stroke: '#0b0f1c', strokeThickness: 5 }).setOrigin(0.5).setVisible(false);
       cont.add([tag, alert]);
-      this.roamers.push({ d, tier, cont, view, parts, alert, tx: c.x, ty: c.y, home: [c.x, c.y], goal: null, wait: 1000, calm: 0 });
+      this.roamers.push({ d, tier, cont, view, parts, shadow, alert, tx: c.x, ty: c.y, home: [c.x, c.y], goal: null, wait: 1000, calm: 0 });
     }
   }
 
@@ -518,6 +551,7 @@ export class OverworldScene extends Phaser.Scene {
         if (!this.#blockedAt(nx, ny) && !this.#blockedAt(nx, ny - 8)) { c.x = nx; c.y = ny; } else r.goal = null;
         if (Math.abs(vx) > 0.2) r.parts.inner.scaleX = vx > 0 ? -1 : 1;
       }
+      if (r.shadow) r.shadow.x = FOOT_DX * 76 * (r.parts.inner.scaleX < 0 ? -1 : 1);
       c.setDepth(c.y);
       const t = time / 1000 + r.home[0];
       if (r.parts.wings) r.parts.wings.rotation = Math.sin(t * (sp ? 12 : 2.4)) * (sp ? 0.25 : 0.07);
@@ -549,7 +583,7 @@ export class OverworldScene extends Phaser.Scene {
     cam.once('camerafadeoutcomplete', () => {
       this.scene.sleep();
       this.scene.launch('battle', {
-        g: this.g, mode: 'roam', tier: r.tier, foes: [r.d], field, roamId: r.d.id,
+        g: this.g, mode: 'roam', tier: r.tier, foes: [r.d], field, roamId: r.d.id, night: !!r.d.night,
         title: 'Vad sárkány!', sub: `${r.d.nev} — ${r.tier}. fokú vadon`,
       });
     });
@@ -891,6 +925,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.ready || !this.avatar) return;
     const { hud, state } = this.g;
     const dt = Math.min(delta, 50) / 1000;
+    this.daynight?.update(time);
 
     let vx = 0, vy = 0;
     if (!hud.modalOpen) {
@@ -930,6 +965,7 @@ export class OverworldScene extends Phaser.Scene {
       if (!this.#collides(this.player.x, ny)) this.player.y = ny;
       // A rajz balra néz: jobbra haladva tükrözzük
       if (Math.abs(vx) > 0.2) this.avatarParts.inner.scaleX = vx > 0 ? -1 : 1;
+      this.heading = Math.atan2(vy, vx);
       // Porfelhő a lába nyomán (földön), szélcsík a szárnya mögött (repülve)
       if (time > this.dustAt) {
         this.dustAt = time + (this.soar > 0.5 ? 70 : 140);
@@ -949,6 +985,11 @@ export class OverworldScene extends Phaser.Scene {
     this.#updateSheep(dt);
     this.#updateWanderer(time);
     this.#updateRoamers(time, dt);
+    // Kistérkép: tízszer másodpercenként, tört koordinátával (simán gördül)
+    if (time > this.mmAt) {
+      this.mmAt = time + 100;
+      hud.drawMinimap(this.fogBits, this.player.x / TILE - 0.5, (this.player.y - TILE / 2) / TILE, this.world.pois, state.save.cleared, this.g.story?.target, this.heading);
+    }
 
     // Új csempére lépett?
     const [tx, ty] = this.#tileOf();
@@ -956,6 +997,7 @@ export class OverworldScene extends Phaser.Scene {
     if (key !== this.lastTile) {
       this.lastTile = key;
       this.#reveal(tx, ty);
+      hud.fogChanged();
       state.save.pos = { x: tx, y: ty };
       state.dirty = true;
       this.#checkHerb(tx, ty);
@@ -979,6 +1021,7 @@ export class OverworldScene extends Phaser.Scene {
     this.avatar.angle = moving ? s * (p.inner.scaleX < 0 ? 6 : -6) : 0;
     const shrink = 1 - s * 0.35;
     this.playerShadow.setScale((moving ? 0.9 + Math.abs(Math.sin(t * 7)) * -0.12 * (1 - s) : 1) * shrink, shrink).setAlpha(0.8 - s * 0.35);
+    this.playerShadow.x = FOOT_DX * this.avatarS * (p.inner.scaleX < 0 ? -1 : 1);
   }
 
   /** Lábnyom-por a földön, szélcsík a levegőben — a vidékhez illő színnel. */
@@ -995,6 +1038,15 @@ export class OverworldScene extends Phaser.Scene {
     const col = this.world.snowy[i] ? 0xeef4fc : this.world.ashy[i] ? 0x6b5a5e : this.world.biome[i] === B.SAND ? 0xd6c49a : 0xb9a68a;
     const puff = this.add.image(x + (Math.random() - 0.5) * 10, y, 'fx-smoke').setTint(col).setScale(0.25).setAlpha(0.55).setDepth(this.player.depth - 1);
     this.tweens.add({ targets: puff, scale: 0.6, alpha: 0, y: y - 6, x: puff.x - vx * 8, duration: 520, onComplete: () => puff.destroy() });
+  }
+
+  /** Helyszín neve a világtérképre. */
+  #poiName(p) {
+    if (p.name) return p.name;
+    if (p.type === 'cave') return `${ROMAN[p.tier]}. ${CAVES[p.tier].name}`;
+    if ((p.type === 'shrine' || p.type === 'npc' || p.type === 'ruins') && PLACES[p.place]) return PLACES[p.place].name;
+    if (p.type === 'stone') return 'Rúnakő';
+    return '';
   }
 
   #updateArea(tx, ty) {
@@ -1191,7 +1243,8 @@ export class OverworldScene extends Phaser.Scene {
     const cave = CAVES[p.tier];
     const cleared = !!state.save.cleared[p.tier];
     const maxCleared = Math.max(0, ...Object.keys(state.save.cleared).filter((k) => state.save.cleared[k]).map(Number));
-    const locked = p.tier > maxCleared + 1;
+    // Níðhöggr barlangja bármikor nyitva: aki bemegy, egyből a bosszal néz szembe
+    const locked = p.tier !== 5 && p.tier > maxCleared + 1;
     const partyUp = state.party.filter((d) => state.hpOf(d) > 0);
     const rec = p.tier === 5 ? 20 : 1 + (p.tier - 1) * 4;     // Níðhöggr ellen több kell (szimuláció: 17. szinten ~22% esély)
     const lore = {
@@ -1208,7 +1261,7 @@ export class OverworldScene extends Phaser.Scene {
       <p class="gm-lore">${lore}</p>
       <div class="gm-facts">
         <span>Ajánlott szint: <b>${rec}+</b></span>
-        <span>Hullámok: <b>${cave.waves.length}</b></span>
+        <span>${p.tier === 5 ? 'Ellenfél: <b>Níðhöggr</b>' : `Hullámok: <b>${cave.waves.length}</b>`}</span>
         <span>Állapot: <b>${cleared ? 'bejárva ✓' : 'felderítetlen'}</b></span>
       </div>
       ${locked ? `<p class="gm-warn">Ez a barlang még túl veszélyes. Előbb járd be a(z) ${ROMAN[maxCleared + 1]}. fokút.</p>` : ''}
@@ -1255,6 +1308,7 @@ export class OverworldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.#fitZoom();
     cam.startFollow(this.player, true, 0.12, 0.12);
+    this.daynight?.syncMusic(true);
     if (result?.defeat) {
       // Elájult csapat: a hosszúházban tér magához
       this.player.setPosition(this.world.start.x * TILE + TILE / 2, this.world.start.y * TILE + TILE - 6);

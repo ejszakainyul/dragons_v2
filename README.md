@@ -260,8 +260,9 @@ php tools/build_realm.php
 ## A Sárkányok Völgye — kalandjáték (`kaland.php`)
 
 Bejárható völgy (Phaser 3.90, `vendor/phaser/`), amin a csapat vezérsárkánya a
-játékos. **Barlangok** (I–V. fok, 3 hullám, a végén Níðhöggr): körökre osztott
-harc. **Fészkek**: két saját sárkányból tojás — testrészenként dönthető, kitől
+játékos. **Barlangok** (I–IV. fok, 3 hullám; sorban nyílnak): körökre osztott
+harc. Az **V. barlang** Níðhöggr fészke: mindig nyitva, egyből a boss jön, és
+bármikor — akár többször is — legyőzhető. **Fészkek**: két saját sárkányból tojás — testrészenként dönthető, kitől
 örököl a fióka, a „Sors" 18% eséllyel új testrészt hoz. **Hosszúház**: pihenés,
 csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe kerülnek
 (profil, aréna).
@@ -273,7 +274,16 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/overworld.js` | a völgy: mozgás, köd, helyszínek, tenyésztés |
 | `script/game/battle.js` | a csata (hullámok, képességek, jutalmak) |
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
-| `script/game/art.js` | minden grafika kódból (csempék, épületek, effektek) |
+| `script/game/art.js` | effektek, sárkánynézet, a renderelt képek kódrajzos tartaléka |
+| `script/game/skins.js` | a sárkányrészek színezése (fő kép × szín + saját színű réteg), fajtanév |
+| `script/game/render3d.js` | a közös renderelő mag (sárkányok, a völgy tárgyai, csatahátterek, Níðhöggr) |
+| `tools/dragonart/` | a testrészek formái és gyártója (`dragons/hd/`) |
+| `tools/worldart/` | a völgy tárgyai (`img/world/`), a csatahátterek darabjai és Níðhöggr részei (`img/battle/`), `world-manifest.js` |
+| `script/game/backdrops.js` | a csatahátterek összerakása a képernyő méretére (barlangok, szabadtér, karám) |
+| `script/game/music.js` | saját zene WebAudio-szintézissel (völgy, éjszaka, csata, boss) |
+| `script/game/daynight.js` | napszakok: közös világóra, éjjeli fények, éji vadak |
+| `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
+| `script/game/terrain.js` | árnyalt hegycsúcsok a hegyvidékben (egy textúralapon) |
 | `script/game/hud.js`, `state.js`, `sfx.js`, `path.js`, `lore.js` | felület, mentés, hangok, A*, rúnakövek |
 | `kaland_api.php`, `inc/game.php` | szerver: tenyésztés, kikelés, szelídítés, mentés |
 | `sql/migrate_game.sql` | a két új tábla és a `generacio`/`vonasok` oszlop |
@@ -286,6 +296,92 @@ mysql -u root --default-character-set=utf8mb4 < sql/migrate_game.sql
 képességet (tűzokádó orr = Lángcsóva, kígyófej = Méregfog, kristályfej =
 Jégszilánk, taréjos fej = Viharüvöltés minden ellenfélre…), a test és a láb a
 páncélt, a szárny a gyorsaságot és a kitérést.
+
+**Kombinált képesség az összetételből:** minden testrésznek eleme van
+(🔥 tűz, ❄ jég, ⚡ vihar, 🌑 árny, ⛰ kő, ☠ méreg — a nevéből: Lávapofa,
+Jégkarom, Viharszárny…). A fej eleme az elsődleges, a test + láb + szárny
+leggyakoribb eleme a másodlagos; a kettő párosa adja a sárkány második,
+teli energiába (3) kerülő képességét — 6 tiszta és 15 vegyes, összesen 21
+féle (pl. tűz + jég = Gőzrobbanás, vihar + méreg = Savas eső, kő + árny =
+Kőkripta). Minél több rész „rezonál" a párossal, annál erősebb (+8%
+részenként). A vad sárkányok is használják. Táblázat: `COMBOS` a `rules.js`-ben.
+
+**A völgy megjelenése:** minden indításkor, egyszer készül — futás közben
+nincs rajta extra effekt. A csempék (`tiles.js`) képpontonként rajzolódnak,
+varratmentesen, bal felső fénnyel domborítva (fű, ösvény, homok, hó, hamu,
+szikla, sziklafal, jég). A vidékhatárokra ritka szegélyrétegek kerülnek: a
+szomszéd anyaga hullámos, puha széllel, enyhe árnyékkal lóg át (hó a fűre,
+fű az ösvényre…). A partokon homok, nedves sáv, hab és sekély víz, lekerekített
+sarkokkal. A fák és sziklák árnyéka a képükbe van rajzolva; a hegyvidékben
+árnyalt, havas csúcsok (`terrain.js`).
+
+**Zene:** négy saját szerzemény, hangfájl nélkül, a böngészőben szintetizálva
+(`music.js`): „A Völgy dala" (lant-arpeggio, furulya, keretdob, orgonapont),
+ugyanez éjjeli változatban, „Pajzsfal" a csatákhoz (taikó, vonós ostinato,
+kürt) és „Níðhöggr ébredése" (frigiai fordulat, mély kórus, nehéz dobok).
+Darabváltáskor áttűnik; a ♫ gombbal külön kikapcsolható.
+
+**Napszakok:** a völgyben egy nap 12 perc, a valódi órához igazítva — minden
+játékosnál egyszerre van éjfél. Alkonyatkor narancs, éjjel mélykék a fény;
+kigyulladnak a hosszúház, a tábortűz, a kohó és a szentélyek fényei, a
+sárkányod körül lámpásfény dereng. Éjjel „éji vadak" járnak: két szinttel
+erősebbek, de másfélszeres zsákmányt adnak. Az óra a felső sávban látszik.
+
+**Térkép:** a kistérkép festett hatású (domborzati árnyék, mély és sekély víz,
+hab, utak, fák, hegycsúcsok), a játékos körül gördül, irányjelző nyíllal; a
+saga célja a peremén nyíllal jelez, ha kívül esik. **M** (vagy a ⛶ gomb):
+teljes világtérkép nevekkel és jelmagyarázattal — kattintásra odaindulsz.
+
+**Barlangok a csatában:** rétegzett, festett mélység — a messzi csarnok
+fénye, három sziklakulissza peremfénnyel, és fokozatonként saját látvány:
+mohás vízesés világító gombákkal, befagyott vízesés jégcsapokkal,
+ametisztfürtök és rúnaoszlop, lávató lávazuhataggal és bazaltoszlopokkal,
+Níðhöggr barlangjában Yggdrasil elágazó gyökerei arany nedvvel. Mindegyikhez
+saját mozgó hangulat (csöppek, hószikra, fényszemcsék, parázs, spórák).
+
+**Helyszínek:** a hosszúház (csónakgerinc-ívű zsindelytető mohával, sárkányfejes
+oromdeszkák, festett pajzsok, lámpások), a kunyhó, a kovácsműhely, a barlang,
+a fészek, a rúnakő, a jégtrón, a Muspell-oltár, a Valkűr-kő, a stég, a ládák és
+a menhírek mind anyag-segédekkel készülnek (erezett deszka, faragott kő, moha,
+talajárnyék), utána egy közös simítás ad nekik peremfényt és árnyékoldalt.
+
+**Egyedi sárkányok:** a testrészek festett, térhatású PNG-k (`dragons/hd/`),
+amiket a `tools/dragonart/` renderelő gyárt (`node tools/dragonart/build.mjs`).
+Nem körvonalas rajzok: minden rész valódi térbeli formákból áll (elvékonyodó
+csövek, ellipszoidok, lapok, kristályprizmák), és pixelenként kap fényt —
+szórt fény, ég-fény, csillanás, peremfény, résárnyék, hideg árnyék, finom
+kontúr; a felszínen halpikkely, hasi lemezek, szarvgyűrűk, tolllapok. Minden
+résznek két képe van: a fő kép (szürke test + saját színű anyagok) és a
+`-fx` réteg (szarv, karom, fog, szem, kristály, láva, fém, csillanás). A
+színezett nézetek a fő képet a sárkány színével szorozzák, és fölé teszik a
+`-fx` réteget — így a szarv csont színű marad, a láva izzik, a szem világít.
+18 fej, 18 test, 18 láb és 18 szárny, mind más formájú (kölyökfej,
+triceratopsz-gallér, koponya, csőr, vipera, sörényes keleti sárkány, vassisak;
+páncélhát, kígyótest, csontváz, vitorlás hát, mohos bunda; karmos, oszlop-,
+futó-, markoló- és patás láb; denevér-, tollas, rovar-, uszony- és
+kristályszárny…). A csatlakozási pontok változatlanok: bármelyik kombinálható.
+
+**Egységes látvány:** a völgy tárgyai (fák, sziklák, épületek, NPC-k, birkák,
+hegycsúcsok), a csatahátterek és Níðhöggr is ugyanazzal a renderelővel
+készülnek, mint a sárkányok (`node tools/worldart/build.mjs`, ~20 mp): térbeli
+formák, pixelenkénti fény, saját anyagok (kéreg, tűlevél, zsindely, kő, jég,
+ametiszt, izzó láva, rúnák). A völgy képei induláskor töltődnek be (a régi
+kódrajz csak tartalék), a csatahátterek darabjai csatánként, csak az épp
+kellő témáé (~250 KB barlangonként). A `backdrops.js` a képernyő méretére
+rakja össze őket: három sziklakulissza egyre közelebb (a távoliak a csarnok
+fényébe olvadnak), cseppkövek, a téma díszei, padlókövek; szabadtéren
+hegyláncok, fasor, előtér-fák; a karámban cölöpkerítés, fáklyák, lobogók.
+
+**Felület és menü:** a HUD, a harci panel és az ablakok faragott palakő-lapok
+sárgaréz szegéllyel és szegecsekkel, ugyanazzal a bal felső fénnyel, mint a
+renderelt világ; a gombok domborúak és lenyomhatók, az életerő-sávok
+bemélyített vájatok. **Esc** (vagy a ☰ gomb) nyitja a játékmenüt: folytatás,
+krónika, világtérkép, zene, hangok, gyűjtemény, kilépés, és az irányítás
+összefoglalója. Keskeny kijelzőn a ritkább gombok a menübe költöznek.
+
+**Talajon állnak:** a sárkányok alatt sötét magú érintkezési árnyék van a
+talpak közepén (irány szerint tükrözve, ugráskor zsugorodik), és a
+csatahátterek padlóvonala a leghátsó sárkány talppontjához igazodik.
 
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös
@@ -319,8 +415,25 @@ ajánlott szintű csapat a II–IV. fokon 90/90/71%, Níðhöggr 20. szint kör�
   barlangok szabják meg az erejüket), útjelző táblák, a kalmár boltja (gyógyfű,
   mézsör, térkép-töredék), a skald ihletése, birkák, hollók, felhőárnyékok.
 - **Csata:** állapotok látszanak a sárkányon (lángok, jég, csillagok, pajzsbuborék…),
-  mozis kamera a nagy technikáknál, ütésmegállás, lassított utolsó csapás, utóképek;
-  Níðhöggr a fele életerejénél dühbe gurul és csatlóst hív.
+  mozis kamera a nagy technikáknál, ütésmegállás, lassított utolsó csapás, utóképek.
+- **Níðhöggr, a végső ellenfél** (`boss.js` + `battle.js`): nem testrészekből áll,
+  hanem saját, kódból rajzolt óriás (kb. kétszer akkora, mint egy sárkány):
+  szegmentált nyak, szarvkorona, három pár izzó szem, nyíló állkapocs, tépett
+  szárnyak, tüskés farok, izzó gyökérerek. Egyedül jön az V. barlang utolsó
+  hullámában, és **három fázisban** harcol (66% és 33% életerőnél vált):
+  saját mozdulatai vannak (harapás, farokcsapás, gyökérrontás, szárnyvihar,
+  méregláng, rengés), a 2. fázisban csatlóst hív, a 3.-ban körönként kétszer
+  lép. Ha **mély lélegzetet vesz**, a következő lépése a Világvég-lehelet
+  (az életerő 90%-a — védekezve csak 30%). A találatok a **megtörés**-sávot
+  töltik: ha megtelik, megtántorodik, két körig +40% sebzést kap, és a
+  feltöltött lehelete elvész. A kábítást lerázza, de az is töri.
+  Számok: `BOSS` a `rules.js`-ben (szimulációval hangolva).
+- **A saga vége** (`ending.js`): az epilógus után teljes képernyős, animált zárókép:
+  éjszakai ég sarki fénnyel és hullócsillagokkal, telihold, a Világfa sziluettje,
+  csúszó hegyvonulatok, felszálló parázs, és a játékos saját sárkányai repülnek át
+  a hold előtt. Előtte kirajzolódó rúnakör, betűnként felragyogó cím, felpörgő
+  statisztikák, a csapat bemutatása és stáblista. Kattintásra azonnal kibomlik;
+  a krónikából (ᛉ) bármikor újranézhető.
 
 Minden új állapot a mentett játékállás JSON-jában van (`story`, `learned`, `train`,
 `ultis`, `relics`, `techSrc`, `places`) — szerveroldali változás nem kellett, mert

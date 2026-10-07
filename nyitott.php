@@ -87,11 +87,11 @@ require __DIR__ . '/header.php';
 
       <div class="dragon-area" id="dragonArea">
         <div class="area-ring" aria-hidden="true"></div>
-        <div class="dragon-render" id="dragonImage" style="filter:url(#workshopTint)">
-          <img id="slot-body"  alt="" hidden>
-          <img id="slot-legs"  alt="" hidden>
-          <img id="slot-head"  alt="" hidden>
-          <img id="slot-wings" alt="" hidden>
+        <div class="dragon-render" id="dragonImage">
+          <?php foreach (['body', 'legs', 'head', 'wings'] as $s): ?>
+          <img id="slot-<?= $s ?>" alt="" hidden style="filter:url(#workshopTint)">
+          <img id="slot-<?= $s ?>-fx" alt="" hidden>
+          <?php endforeach; ?>
         </div>
         <p class="area-hint" id="areaHint">Húzd ide a testrészeket</p>
       </div>
