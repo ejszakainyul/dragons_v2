@@ -274,9 +274,12 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `script/game/overworld.js` | a völgy: mozgás, köd, helyszínek, tenyésztés |
 | `script/game/battle.js` | a csata (hullámok, képességek, jutalmak) |
 | `script/game/rules.js` | statisztikák, képességek, sebzés, vad sárkányok |
-| `script/game/art.js` | minden grafika kódból (épületek, helyszínek, effektek, sárkánynézet) |
+| `script/game/art.js` | effektek, sárkánynézet, a renderelt képek kódrajzos tartaléka |
 | `script/game/skins.js` | a sárkányrészek színezése (fő kép × szín + saját színű réteg), fajtanév |
-| `tools/dragonart/` | a testrészek renderelője (térbeli formák, pixelenkénti fény) |
+| `script/game/render3d.js` | a közös renderelő mag (sárkányok, a völgy tárgyai, csatahátterek, Níðhöggr) |
+| `tools/dragonart/` | a testrészek formái és gyártója (`dragons/hd/`) |
+| `tools/worldart/` | a völgy tárgyai (`img/world/`), a csatahátterek darabjai és Níðhöggr részei (`img/battle/`), `world-manifest.js` |
+| `script/game/backdrops.js` | a csatahátterek összerakása a képernyő méretére (barlangok, szabadtér, karám) |
 | `script/game/music.js` | saját zene WebAudio-szintézissel (völgy, éjszaka, csata, boss) |
 | `script/game/daynight.js` | napszakok: közös világóra, éjjeli fények, éji vadak |
 | `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
@@ -357,6 +360,17 @@ triceratopsz-gallér, koponya, csőr, vipera, sörényes keleti sárkány, vassi
 páncélhát, kígyótest, csontváz, vitorlás hát, mohos bunda; karmos, oszlop-,
 futó-, markoló- és patás láb; denevér-, tollas, rovar-, uszony- és
 kristályszárny…). A csatlakozási pontok változatlanok: bármelyik kombinálható.
+
+**Egységes látvány:** a völgy tárgyai (fák, sziklák, épületek, NPC-k, birkák,
+hegycsúcsok), a csatahátterek és Níðhöggr is ugyanazzal a renderelővel
+készülnek, mint a sárkányok (`node tools/worldart/build.mjs`, ~20 mp): térbeli
+formák, pixelenkénti fény, saját anyagok (kéreg, tűlevél, zsindely, kő, jég,
+ametiszt, izzó láva, rúnák). A völgy képei induláskor töltődnek be (a régi
+kódrajz csak tartalék), a csatahátterek darabjai csatánként, csak az épp
+kellő témáé (~250 KB barlangonként). A `backdrops.js` a képernyő méretére
+rakja össze őket: három sziklakulissza egyre közelebb (a távoliak a csarnok
+fényébe olvadnak), cseppkövek, a téma díszei, padlókövek; szabadtéren
+hegyláncok, fasor, előtér-fák; a karámban cölöpkerítés, fáklyák, lobogók.
 
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös

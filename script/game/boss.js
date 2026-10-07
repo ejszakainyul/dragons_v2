@@ -9,6 +9,9 @@
 
    A rész-képek külön textúrák, egy tárolóban mozognak (lélegzés,
    nyakringás, szárnycsapás, állkapocs). Balra néz, mint minden ellenfél.
+   A részeket a közös renderelő gyártja (tools/worldart/boss.mjs →
+   img/battle/boss-*.png, a csata tölti be); az itteni kódrajz csak
+   tartalék, ha a képek nem érkeznek meg.
    A tároló origója a talppont (a talaj közepe a sárkány alatt).
    ===================================================================== */
 import { mulberry32 } from './rules.js';

@@ -22,6 +22,7 @@ import { BattleScene } from './battle.js';
 import { Story } from './story.js';
 import { layoutPlaces, playerSeed } from './places.js';
 import { buildPeaks } from './terrain.js';
+import { WORLD_ART } from './world-manifest.js';
 
 const CFG = window.GAME || {};
 const shell = document.getElementById('gameShell');
@@ -42,8 +43,22 @@ class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
   init(data) { this.g = data.g; }
 
+  /** A völgy renderelt tárgyai (tools/worldart) — a régi kódrajzok helyett. */
+  preload() {
+    setLoading('A völgy tárgyainak betöltése…', 50);
+    const v = WORLD_ART.v;
+    for (const k of WORLD_ART.keys) this.load.image(k, `img/world/${k}.png?v=${v}`);
+    if (WORLD_ART.peaks?.length) this.load.image('peaks', `img/world/peaks.png?v=${v}`);
+    this.load.on('loaderror', (f) => console.warn('Hiányzó kép, kódrajz pótolja:', f.key));
+  }
+
   async create() {
     const { g } = this;
+    // A hegycsúcsok képkockái a közös lapon
+    if (this.textures.exists('peaks')) {
+      const tex = this.textures.get('peaks');
+      for (const [name, x, y, w, h] of WORLD_ART.peaks) tex.add(name, 0, x, y, w, h);
+    }
     setLoading('Csempék és fák faragása…', 62);
     buildTileset(this);
     buildSprites(this);

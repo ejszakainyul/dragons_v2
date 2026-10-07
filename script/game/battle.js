@@ -26,7 +26,8 @@ import {
   withTotals, levelOf, MAX_ENERGY, SKILL_COST, shardsFor, xpFor, caveBonus, TAME_CHANCE, TAME_COST, pick,
   COMBOS, COMBO_COST, ELEMENTS, BOSS, bossPhase,
 } from './rules.js';
-import { dragonTextures, makeDragonView, caveBackdrop, arenaBackdrop, fieldBackdrop } from './art.js';
+import { dragonTextures, makeDragonView } from './art.js';
+import { caveBackdrop, arenaBackdrop, fieldBackdrop, arenaTorches, loadBattleArt } from './backdrops.js';
 import { makeBossView, animateBoss, bossMouth } from './boss.js';
 import { esc } from './hud.js';
 
@@ -84,6 +85,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.chorusOn && (mead || inspired)) this.chorus = CHORUS.max / 2;
     hud.setChorus(this.chorus, this.chorusOn);
 
+    await loadBattleArt(this, this.spar ? 'spar' : this.field ? 'field' : 'cave', this.field ? this.fieldKind : this.tier);
     const { width: w, height: h } = this.scale;
     this.bg = this.add.image(0, 0, this.#backdrop(w, h)).setOrigin(0).setDepth(-10);
     this.#layout();
@@ -185,13 +187,13 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.spar) {
       // A háttérkép fáklyái (ugyanott, ahol az arenaBackdrop rajzolja őket) pislákolnak
-      const fy = h * 0.72 - 82;
-      for (const fx of [0.12, 0.38, 0.62, 0.88]) {
-        const glow = keep(this.add.image(w * fx, fy, 'fx-dot').setTint(0xffa040).setBlendMode('ADD').setScale(3.2).setAlpha(0.35).setDepth(-6));
+      const torches = arenaTorches(w, h), fy = torches[0].y;
+      for (const t of torches) {
+        const glow = keep(this.add.image(t.x, t.y, 'fx-dot').setTint(0xffa040).setBlendMode('ADD').setScale(3.2).setAlpha(0.35).setDepth(-6));
         this.tweens.add({ targets: glow, alpha: { from: 0.22, to: 0.5 }, scale: { from: 2.9, to: 3.5 }, duration: 140 + Math.random() * 160, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       }
       keep(this.add.particles(0, 0, 'fx-dot', {
-        x: { min: 0, max: w }, y: h * 0.72 - 70, lifespan: 2200, speedY: { min: -50, max: -20 }, speedX: { min: -12, max: 12 },
+        x: { min: 0, max: w }, y: fy + 12, lifespan: 2200, speedY: { min: -50, max: -20 }, speedX: { min: -12, max: 12 },
         scale: { start: 0.1, end: 0 }, tint: [0xffc46b, 0xff8a3d], blendMode: 'ADD', frequency: 120, maxAliveParticles: 20,
       }).setDepth(-5));
       return;

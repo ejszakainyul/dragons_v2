@@ -106,21 +106,21 @@ export function buildTileset(scene) {
   const grassPx = (o, tone = 0, dark = 0) => texel(
     (x, y) => nz(x, y, o, 3, 3) * 0.75 + nz(x, y, o + 50, 2, 8) * 0.25,
     (x, y, h) => {
-      let col = mix(hex('#345c3d'), hex('#578a51'), smooth(0.2, 0.85, h));
+      let col = mix(hex('#41704a'), hex('#5f9458'), smooth(0.2, 0.85, h));
       const patch = smooth(0.55, 0.78, nz(x, y, o + 90, 2, 1));
-      col = mix(col, hex(tone ? '#7a8f48' : '#4c7d4a'), patch * (tone ? 0.45 : 0.25));
-      return dark ? mix(col, hex('#22402b'), dark) : col;
-    }, 0.9);
+      col = mix(col, hex(tone ? '#73904c' : '#4f8250'), patch * (tone ? 0.22 : 0.15));
+      return dark ? mix(col, hex('#2c4d34'), dark) : col;
+    }, 0.65);
   const blades = (t, n, cols, len = 5) => details(t, () => scatter(n, (x, y, r) => {
     ctx.strokeStyle = cols[(r * cols.length) | 0]; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + (r - 0.5) * 3, y - len * 0.6, x + (r - 0.5) * 5, y - len * (0.7 + r * 0.6)); ctx.stroke();
   }));
   put(T.GRASS, grassPx(1));
-  blades(T.GRASS, 34, ['#234530', '#2f5a3a', '#76a868', '#8fbf74']);
+  blades(T.GRASS, 16, ['#3c6a45', '#4c7a4c', '#7aac6c', '#8fbf74']);
   put(T.GRASS2, grassPx(11, 1));
-  blades(T.GRASS2, 30, ['#2c4a30', '#6f8f4a', '#9cb86a']);
+  blades(T.GRASS2, 14, ['#46704a', '#7a9a52', '#9cb86a']);
   put(T.FLOWERS, grassPx(21));
-  blades(T.FLOWERS, 24, ['#234530', '#76a868']);
+  blades(T.FLOWERS, 12, ['#3c6a45', '#76a868']);
   details(T.FLOWERS, () => scatter(7, (x, y, r) => {
     const col = ['#f2e27a', '#f6f6f6', '#c49cff', '#ff9ab8'][(r * 4) | 0];
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.arc(x + 1, y + 1.5, 2.6, 0, 7); ctx.fill();
@@ -128,12 +128,12 @@ export function buildTileset(scene) {
     for (let p = 0; p < 5; p++) { const a = p * 1.2566; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 1.9, y + Math.sin(a) * 1.9, 1.4, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.arc(x, y, 0.9, 0, 7); ctx.fill();
   }));
-  put(T.FOREST, grassPx(31, 0, 0.35));
+  put(T.FOREST, grassPx(31, 0, 0.14));
   details(T.FOREST, () => scatter(26, (x, y, r) => {
     ctx.strokeStyle = r < 0.5 ? '#6b4a2e' : '#8a6a3e'; ctx.lineWidth = 1; ctx.lineCap = 'round';
     const a = r * 6.28; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 4, y + Math.sin(a) * 4); ctx.stroke();
   }));
-  blades(T.FOREST, 12, ['#1d3826', '#4f7a4a']);
+  blades(T.FOREST, 8, ['#355c3e', '#4f7a4a']);
 
   /* --- Ösvény (föld és havas) --- */
   const pebbles = (t, n, cols) => details(t, () => scatter(n, (x, y, r) => {
