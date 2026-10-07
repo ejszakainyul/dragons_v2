@@ -39,10 +39,13 @@ export function dragonLook(d, catalog) {
 }
 
 /** A textúrák pereme (a rács méretének aránya mindkét oldalon). */
-export const SKIN_PAD = 0.04;
+export const SKIN_PAD = 0.02;
 
-/** Egy rész kifestése: a rajz × saját szín (a has felé világosabb), lágy fény. */
-export function paintPart(ctx, N, slot, img, look) {
+/**
+ * Egy rész kifestése: a festett rajz × saját szín (a has felé világosabb),
+ * fölötte a saját színű réteg (szarv, karom, szem, kristály, láva, csillanás).
+ */
+export function paintPart(ctx, N, slot, img, look, fx = null) {
   const u = N / 64;
   ctx.translate(Math.round(N * SKIN_PAD), Math.round(N * SKIN_PAD));
   ctx.drawImage(img, 0, 0, N, N);
@@ -57,12 +60,5 @@ export function paintPart(ctx, N, slot, img, look) {
   ctx.globalCompositeOperation = 'destination-in';
   ctx.drawImage(img, 0, 0, N, N);
   ctx.restore();
-  // Térfogat: bal felső fény, jobb alsó árnyék (csak a rajzon belül)
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-atop';
-  const lg = ctx.createLinearGradient(8 * u, 4 * u, 56 * u, 62 * u);
-  lg.addColorStop(0, 'rgba(255,248,230,.18)'); lg.addColorStop(0.45, 'rgba(255,255,255,0)');
-  lg.addColorStop(0.75, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(10,8,24,.22)');
-  ctx.fillStyle = lg; ctx.fillRect(0, 0, N, N);
-  ctx.restore();
+  if (fx) ctx.drawImage(fx, 0, 0, N, N);
 }

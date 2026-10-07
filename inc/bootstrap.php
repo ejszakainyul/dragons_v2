@@ -188,7 +188,8 @@ function part_set(): array
 {
     static $set = null;
     if ($set === null) {
-        foreach ([['dragons/svg/', 'svg'], ['dragons/hd/', 'png'], ['dragons/', 'png']] as [$dir, $ext]) {
+        // A festett (renderelt) készlet az első: tools/dragonart/build.mjs gyártja
+        foreach ([['dragons/hd/', 'png'], ['dragons/svg/', 'svg'], ['dragons/', 'png']] as [$dir, $ext]) {
             if (is_dir(APP_ROOT . '/' . rtrim($dir, '/'))) {
                 $set = ['dir' => $dir, 'ext' => $ext];
                 break;
@@ -212,6 +213,19 @@ function part_src(string $filename): string
     // különben a régi rajzot mutatná a gyorsítótárból.
     $full = APP_ROOT . '/' . $path;
     return $path . '?v=' . (is_file($full) ? filemtime($full) : 0);
+}
+
+/**
+ * A rész saját színű rétege (szarv, karom, szem, kristály, láva + csillanások),
+ * ha a készletnek van ilyen. A színezett nézetek ezt teszik a színezett kép
+ * fölé, hogy a szarv ne kapja meg a sárkány színét. Üres szöveg, ha nincs.
+ */
+function part_fx_src(string $filename): string
+{
+    $base = preg_replace('/\.(png|svg)$/i', '', $filename);
+    $path = part_dir() . $base . '-fx.png';
+    $full = APP_ROOT . '/' . $path;
+    return is_file($full) ? $path . '?v=' . filemtime($full) : '';
 }
 
 /**
@@ -311,8 +325,9 @@ function dragon_render(array $d, bool $float = true): string
     $color = (string)($d['szin'] ?? '#ff0000');
     $fid   = 'dragonTint' . $id;
 
-    $html  = '<div class="dragon-render' . ($float ? ' floating' : '') . '"'
-           . ' style="filter:url(#' . e($fid) . ')">';
+    // A színezés képenként megy (nem a tárolón), hogy a saját színű rétegek
+    // (-fx) színezés nélkül kerülhessenek a saját részük fölé.
+    $html  = '<div class="dragon-render' . ($float ? ' floating' : '') . '">';
     $html .= '<svg class="tint-def" aria-hidden="true"><filter id="' . e($fid) . '" '
            . 'color-interpolation-filters="sRGB">'
            . '<feColorMatrix type="matrix" values="' . e(color_matrix($color)) . '"/>'
@@ -322,7 +337,9 @@ function dragon_render(array $d, bool $float = true): string
         $pid = (int)($d[$col] ?? 0);
         if ($pid > 0) {
             $file = PART_FILES[$part] . '[' . $pid . ']';
-            $html .= '<img src="' . e(part_src($file)) . '" alt="" loading="lazy">';
+            $html .= '<img src="' . e(part_src($file)) . '" alt="" loading="lazy" style="filter:url(#' . e($fid) . ')">';
+            $fx = part_fx_src($file);
+            if ($fx !== '') $html .= '<img src="' . e($fx) . '" alt="" loading="lazy">';
         }
     }
 

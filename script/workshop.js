@@ -50,6 +50,13 @@
     const img = imgFor(slot);
     img.src = `${CFG.partsDir}${slot}[${data.id}].${CFG.partsExt || 'png'}`;
     img.hidden = false;
+    // A saját színű réteg (szarv, karom, szem…) — csak a festett PNG-készletben van
+    const fx = document.getElementById(`slot-${slot}-fx`);
+    if (fx && (CFG.partsExt || 'png') === 'png') {
+      fx.onerror = () => { fx.hidden = true; };
+      fx.src = `${CFG.partsDir}${slot}[${data.id}]-fx.png`;
+      fx.hidden = false;
+    }
 
     const listItem = document.getElementById(data.elemId);
     if (listItem) listItem.classList.add('used');
@@ -68,6 +75,8 @@
     const img = imgFor(slot);
     img.removeAttribute('src');
     img.hidden = true;
+    const fx = document.getElementById(`slot-${slot}-fx`);
+    if (fx) { fx.removeAttribute('src'); fx.hidden = true; }
 
     delete placed[slot];
     if (doRefresh) refresh();

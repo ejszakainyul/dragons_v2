@@ -1612,10 +1612,10 @@ export async function dragonTextures(scene, dragon, catalog, size = 256) {
     keys[slot] = key;
     if (scene.textures.exists(key)) return;
 
-    const img = await loadImage(part.img);
+    const [img, fx] = await Promise.all([loadImage(part.img), part.fx ? loadImage(part.fx).catch(() => null) : null]);
     const pad = Math.round(size * SKIN_PAD);
     const c = canvas(size + pad * 2, size + pad * 2);
-    paintPart(c.getContext('2d'), size, slot, img, look);
+    paintPart(c.getContext('2d'), size, slot, img, look, fx);
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, c);
   }));
   return keys;

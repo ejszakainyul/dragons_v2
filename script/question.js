@@ -233,11 +233,9 @@ onReady(() => {
               <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
             </filter>
           </svg>
-          <div class="dragon-render floating" style="filter:url(#quizTint)">
-            <img src="${CFG.partsDir}body[${parts.body}].${EXT}"   alt="">
-            <img src="${CFG.partsDir}legs[${parts.legs}].${EXT}"   alt="">
-            <img src="${CFG.partsDir}head[${parts.head}].${EXT}"   alt="">
-            <img src="${CFG.partsDir}wings[${parts.wings}].${EXT}" alt="">
+          <div class="dragon-render floating">
+            ${['body', 'legs', 'head', 'wings'].map((s) => `<img src="${CFG.partsDir}${s}[${parts[s]}].${EXT}" alt="" style="filter:url(#quizTint)">`
+              + (EXT === 'png' ? `<img src="${CFG.partsDir}${s}[${parts[s]}]-fx.png" alt="" onerror="this.remove()">` : '')).join('')}
           </div>
         </div>
 
