@@ -49,13 +49,20 @@ export function paintPart(ctx, N, slot, img, look, fx = null) {
   const u = N / 64;
   ctx.translate(Math.round(N * SKIN_PAD), Math.round(N * SKIN_PAD));
   ctx.drawImage(img, 0, 0, N, N);
-  const range = { fej: [8, 30], test: [18, 44], lab: [38, 62], szarny: [2, 30] }[slot] || [10, 50];
   const top = tint(look.base);
   const bottom = slot === 'szarny' ? tint(mix(look.base, [255, 255, 255], 0.12)) : tint(look.belly);
+  // A test színe magasság szerint (a has felé világosodik). A láb teteje
+  // pontosan ezt folytatja, így a csípőnél nincs színvarrat; lejjebb a
+  // láb a sárkány alapszínét veszi fel.
+  const bodyAt = (y) => mix(top, bottom, Math.max(0, Math.min(1, (y - 33.6) / 10.4)));
+  const range = { fej: [8, 30], test: [18, 44], lab: [30, 62], szarny: [2, 30] }[slot] || [10, 50];
+  const stops = slot === 'lab'
+    ? [[30, bodyAt(30)], [36, bodyAt(36)], [39, bodyAt(39)], [47, top], [62, top]]
+    : [[range[0], top], [range[0] + (range[1] - range[0]) * 0.6, top], [range[1], bottom]];
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   const g = ctx.createLinearGradient(0, range[0] * u, 0, range[1] * u);
-  g.addColorStop(0, css(top)); g.addColorStop(0.6, css(top)); g.addColorStop(1, css(bottom));
+  for (const [y, c] of stops) g.addColorStop((y - range[0]) / (range[1] - range[0]), css(c));
   ctx.fillStyle = g; ctx.fillRect(0, 0, N, N);
   ctx.globalCompositeOperation = 'destination-in';
   ctx.drawImage(img, 0, 0, N, N);

@@ -49,6 +49,7 @@ foreach (glob(__DIR__ . '/script/game/*.js') ?: [] as $file) {
       <button class="hud-icon-btn" id="hudMusic" type="button" aria-label="Zene ki" title="Zene be/ki">♫</button>
       <button class="hud-icon-btn" id="hudMute" type="button" aria-label="Hang ki">🔊</button>
       <a class="hud-icon-btn" href="user.php" title="A gyűjteményed (profil)"><span class="rune-ico">ᛗ</span></a>
+      <button class="hud-icon-btn hud-menu-btn" id="hudMenu" type="button" title="Menü (Esc)" aria-label="Menü"><span class="hud-burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
     </div>
 
     <div class="hud-area" id="hudArea" aria-live="polite"></div>

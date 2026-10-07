@@ -26,7 +26,7 @@ import {
   withTotals, levelOf, MAX_ENERGY, SKILL_COST, shardsFor, xpFor, caveBonus, TAME_CHANCE, TAME_COST, pick,
   COMBOS, COMBO_COST, ELEMENTS, BOSS, bossPhase,
 } from './rules.js';
-import { dragonTextures, makeDragonView } from './art.js';
+import { dragonTextures, makeDragonView, FOOT_DX } from './art.js';
 import { caveBackdrop, arenaBackdrop, fieldBackdrop, arenaTorches, loadBattleArt } from './backdrops.js';
 import { makeBossView, animateBoss, bossMouth } from './boss.js';
 import { esc } from './hud.js';
@@ -87,8 +87,8 @@ export class BattleScene extends Phaser.Scene {
 
     await loadBattleArt(this, this.spar ? 'spar' : this.field ? 'field' : 'cave', this.field ? this.fieldKind : this.tier);
     const { width: w, height: h } = this.scale;
-    this.bg = this.add.image(0, 0, this.#backdrop(w, h)).setOrigin(0).setDepth(-10);
     this.#layout();
+    this.bg = this.add.image(0, 0, this.#backdrop(w, h)).setOrigin(0).setDepth(-10);
     this.#atmosphere();
     this.scale.on('resize', this.#onResize, this);
     this.events.once('shutdown', () => {
@@ -117,9 +117,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #backdrop(w, h) {
-    if (this.spar) return arenaBackdrop(this, w, h);
-    if (this.field) return fieldBackdrop(this, w, h, this.fieldKind);
-    return caveBackdrop(this, this.tier, w, h);
+    const hz = this.horizon;
+    if (this.spar) return arenaBackdrop(this, w, h, hz);
+    if (this.field) return fieldBackdrop(this, w, h, this.fieldKind, hz);
+    return caveBackdrop(this, this.tier, w, h, hz);
   }
 
   /* ================================================================== */
@@ -147,6 +148,9 @@ export class BattleScene extends Phaser.Scene {
         enemy: [0, 1, 2].map((i) => ({ x: w * (0.87 - 0.13 * i) - (i === 1 ? this.S * 0.12 : 0), y: this.floorY + dy[i] })),
       };
     }
+    // A háttér padlóvonala a leghátsó talppont fölött: senki sem áll a falon
+    const back = Math.min(...this.slots.ally.map((p) => p.y), ...this.slots.enemy.map((p) => p.y));
+    this.horizon = Math.round(Phaser.Math.Clamp(back - this.S * 0.16, h * 0.42, h * 0.72));
   }
 
   /** Fénysugarak, lebegő por, köd a padló fölött; a karámban fáklyafény. */
@@ -187,7 +191,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.spar) {
       // A háttérkép fáklyái (ugyanott, ahol az arenaBackdrop rajzolja őket) pislákolnak
-      const torches = arenaTorches(w, h), fy = torches[0].y;
+      const torches = arenaTorches(w, h, this.horizon), fy = torches[0].y;
       for (const t of torches) {
         const glow = keep(this.add.image(t.x, t.y, 'fx-dot').setTint(0xffa040).setBlendMode('ADD').setScale(3.2).setAlpha(0.35).setDepth(-6));
         this.tweens.add({ targets: glow, alpha: { from: 0.22, to: 0.5 }, scale: { from: 2.9, to: 3.5 }, duration: 140 + Math.random() * 160, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -231,8 +235,8 @@ export class BattleScene extends Phaser.Scene {
 
   #onResize() {
     const { width: w, height: h } = this.scale;
-    this.bg.setTexture(this.#backdrop(w, h)).setDisplaySize(w, h);
     this.#layout();
+    this.bg.setTexture(this.#backdrop(w, h)).setDisplaySize(w, h);
     this.#atmosphere();
     for (const u of this.units) if (u.view.scene) this.#place(u);
   }
@@ -242,7 +246,8 @@ export class BattleScene extends Phaser.Scene {
     const s = this.#slot(u);
     u.home = { x: s.x, y: s.y - 0.4 * this.S };
     u.view.setPosition(u.home.x, u.home.y).setDepth(s.y);
-    u.shadow.setPosition(s.x, s.y).setDisplaySize(this.S * 0.8, this.S * 0.22).setDepth(s.y - 1);
+    u.shadow.setPosition(s.x, s.y + this.S * 0.01).setDisplaySize(this.S * 0.78, this.S * 0.17).setDepth(s.y - 1);
+    u.shadowScale = [u.shadow.scaleX, u.shadow.scaleY];
     u.zone.setPosition(s.x, s.y - 0.45 * this.S).setSize(this.S * 0.8, this.S * 0.8);
     u.ui.setPosition(s.x, s.y - this.S * 0.98).setDepth(9000);
     u.ring.setPosition(s.x, s.y).setDepth(s.y - 2);
@@ -258,6 +263,17 @@ export class BattleScene extends Phaser.Scene {
 
   /** Níðhöggr mérete és helye: a jobb oldalt szinte egészében kitölti. */
   #bossHeight() { return this.S * (this.narrow ? 1.7 : 2.0); }
+  /** Az árnyék a talpak alatt követi a sárkányt; ha elrugaszkodik, kisebb lesz. */
+  update() {
+    for (const u of this.units || []) {
+      if (u.boss || !u.shadowScale || !u.view?.scene || !u.shadow?.scene) continue;
+      const lift = Math.max(0, (u.home?.y ?? u.view.y) - u.view.y);
+      const k = Math.max(0.45, 1 - lift / (this.S * 1.1));
+      u.shadow.x = u.view.x + FOOT_DX * this.S * (u.parts.inner.scaleX < 0 ? -1 : 1);
+      u.shadow.setScale(u.shadowScale[0] * k, u.shadowScale[1] * k);
+    }
+  }
+
   #placeBoss(u) {
     const { width: w } = this.scale;
     const H = this.#bossHeight();
@@ -299,7 +315,7 @@ export class BattleScene extends Phaser.Scene {
       tint: 0xffffff,
     };
     if (u.boss) Object.assign(u, { bossH0, bossH: bossH0, phase: 1, stagger: 0, charging: false, turns: 0, lastCharge: 0, lastSummon: -9 });
-    u.shadow = this.add.image(0, 0, 'shadow').setAlpha(0.9);
+    u.shadow = this.add.image(0, 0, 'shadow').setAlpha(1);
     u.ringScale = [S / 128 * 0.9, S / 128 * 0.26];
     u.ring = this.add.image(0, 0, 'fx-ring').setTint(side === 'ally' ? 0xffd08a : 0xff6b6b)
       .setScale(...u.ringScale).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
@@ -1845,7 +1861,7 @@ export class BattleScene extends Phaser.Scene {
       x: { min: -u.bossH * 0.6, max: u.bossH * 0.5 }, speedY: { min: -120, max: -30 }, speedX: { min: -60, max: 60 },
       lifespan: 1400, scale: { start: 0.8, end: 2.4 }, alpha: { start: 0.5, end: 0 }, tint: 0x6a5a7a, frequency: 30, quantity: 3,
     }).setDepth(u.view.depth + 5);
-    this.tweens.add({ targets: u.shadow, alpha: 0.9, duration: 1200 });
+    this.tweens.add({ targets: u.shadow, alpha: 1, duration: 1200 });
     await this.#tween({ targets: u.view, y: u.home.y, alpha: 1, duration: 1500, ease: 'Cubic.easeOut' });
     dust.stop();
     this.time.delayedCall(1500, () => dust.destroy());

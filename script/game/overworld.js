@@ -14,7 +14,7 @@
    ===================================================================== */
 import { TILE, T, B } from './world.js';
 import { findPath } from './path.js';
-import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING } from './art.js';
+import { makeDragonView, dragonTextures, TILE_MARGIN, TILE_SPACING, FOOT_DX } from './art.js';
 import { peakSpots } from './terrain.js';
 import { fringeLayers } from './tiles.js';
 import { CAVES, SKILLS, levelOf, xpForLevel, breedCost, SLOTS, SLOT_NAMES } from './rules.js';
@@ -146,6 +146,7 @@ export class OverworldScene extends Phaser.Scene {
     this.time.addEvent({ delay: 5000, loop: true, startAt: 3000, callback: () => { if (this.ready) this.#spawnRoamers(); } });
     const openBook = () => { if (!hud.modalOpen) { this.g.sfx.click(); this.g.story.openBook(); } };
     hud.el.book?.addEventListener('click', openBook);
+    hud.menuBook = () => this.g.story.openBook();
     hud.el.quest?.addEventListener('click', openBook);
 
     this.events.on('wake', (_, result) => this.#onWake(result));
@@ -516,7 +517,7 @@ export class OverworldScene extends Phaser.Scene {
       }).setOrigin(0.5);
       const alert = this.add.text(0, -104, '!', { fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: '900', color: '#ff5d6c', stroke: '#0b0f1c', strokeThickness: 5 }).setOrigin(0.5).setVisible(false);
       cont.add([tag, alert]);
-      this.roamers.push({ d, tier, cont, view, parts, alert, tx: c.x, ty: c.y, home: [c.x, c.y], goal: null, wait: 1000, calm: 0 });
+      this.roamers.push({ d, tier, cont, view, parts, shadow, alert, tx: c.x, ty: c.y, home: [c.x, c.y], goal: null, wait: 1000, calm: 0 });
     }
   }
 
@@ -550,6 +551,7 @@ export class OverworldScene extends Phaser.Scene {
         if (!this.#blockedAt(nx, ny) && !this.#blockedAt(nx, ny - 8)) { c.x = nx; c.y = ny; } else r.goal = null;
         if (Math.abs(vx) > 0.2) r.parts.inner.scaleX = vx > 0 ? -1 : 1;
       }
+      if (r.shadow) r.shadow.x = FOOT_DX * 76 * (r.parts.inner.scaleX < 0 ? -1 : 1);
       c.setDepth(c.y);
       const t = time / 1000 + r.home[0];
       if (r.parts.wings) r.parts.wings.rotation = Math.sin(t * (sp ? 12 : 2.4)) * (sp ? 0.25 : 0.07);
@@ -1019,6 +1021,7 @@ export class OverworldScene extends Phaser.Scene {
     this.avatar.angle = moving ? s * (p.inner.scaleX < 0 ? 6 : -6) : 0;
     const shrink = 1 - s * 0.35;
     this.playerShadow.setScale((moving ? 0.9 + Math.abs(Math.sin(t * 7)) * -0.12 * (1 - s) : 1) * shrink, shrink).setAlpha(0.8 - s * 0.35);
+    this.playerShadow.x = FOOT_DX * this.avatarS * (p.inner.scaleX < 0 ? -1 : 1);
   }
 
   /** Lábnyom-por a földön, szélcsík a levegőben — a vidékhez illő színnel. */

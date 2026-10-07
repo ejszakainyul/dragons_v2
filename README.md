@@ -372,6 +372,17 @@ rakja össze őket: három sziklakulissza egyre közelebb (a távoliak a csarnok
 fényébe olvadnak), cseppkövek, a téma díszei, padlókövek; szabadtéren
 hegyláncok, fasor, előtér-fák; a karámban cölöpkerítés, fáklyák, lobogók.
 
+**Felület és menü:** a HUD, a harci panel és az ablakok faragott palakő-lapok
+sárgaréz szegéllyel és szegecsekkel, ugyanazzal a bal felső fénnyel, mint a
+renderelt világ; a gombok domborúak és lenyomhatók, az életerő-sávok
+bemélyített vájatok. **Esc** (vagy a ☰ gomb) nyitja a játékmenüt: folytatás,
+krónika, világtérkép, zene, hangok, gyűjtemény, kilépés, és az irányítás
+összefoglalója. Keskeny kijelzőn a ritkább gombok a menübe költöznek.
+
+**Talajon állnak:** a sárkányok alatt sötét magú érintkezési árnyék van a
+talpak közepén (irány szerint tükrözve, ugráskor zsugorodik), és a
+csatahátterek padlóvonala a leghátsó sárkány talppontjához igazodik.
+
 **Ki mit dönt:** a mozgás, a harc és a játékállás a kliensen fut (egyjátékos:
 a csalás csak a saját játékot rontja). Ami új sárkányt hoz létre a közös
 adatbázisban, azt mindig a szerver dönti el: a tojás testrészei már a

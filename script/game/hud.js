@@ -38,6 +38,7 @@ export class Hud {
       quest:   $('#hudQuest'),
       compass: $('#hudCompass'),
       book:    $('#hudBook'),
+      menu:    $('#hudMenu'),
     };
     this.dialogueOpen = false;
 
@@ -49,10 +50,14 @@ export class Hud {
     });
     this.#muteLabel();
 
-    // Esc bezárja a párbeszédablakot
+    // Esc: a nyitott ablakot bezárja, különben a játékmenüt nyitja (harcban
+    // a célválasztás és a párbeszéd a saját Esc-jét kapja, ott nem nyílik)
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !this.el.modal.hidden && this.modalCloseable) this.closeModal();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (!this.el.modal.hidden) { if (this.modalCloseable) this.closeModal(); return; }
+      if (!this.dialogueOpen && !this.root.classList.contains('in-battle') && !document.querySelector('.end-screen')) this.openMenu();
     });
+    this.el.menu?.addEventListener('click', () => { if (this.el.modal.hidden) { this.sfx.click?.(); this.openMenu(); } });
     this.el.modal.addEventListener('pointerdown', (e) => {
       if (e.target === this.el.modal && this.modalCloseable) this.closeModal();
     });
@@ -65,6 +70,7 @@ export class Hud {
 
   /** A zene kapcsolója (a main.js köti be, ha kész a zenemotor). */
   attachMusic(music) {
+    this.music = music;
     const btn = this.root.querySelector('#hudMusic');
     if (!btn) return;
     const label = () => {
@@ -553,6 +559,54 @@ export class Hud {
 
   /** Párbeszédablak VAGY saga-párbeszéd van nyitva: a völgy ilyenkor nem mozdul. */
   get modalOpen() { return !this.el.modal.hidden || this.dialogueOpen; }
+
+  /**
+   * Játékmenü: folytatás, krónika, térkép, hang és zene, gyűjtemény, kilépés.
+   * A krónikát a völgy köti be (menuBook); harc közben csak a hang állítható.
+   */
+  openMenu() {
+    if (!this.el.modal.hidden) return;
+    const battle = this.root.classList.contains('in-battle');
+    const music = this.music, muted = !!this.state.save.muted;
+    const item = (m, rune, title, sub, key = '', off = false) =>
+      `<button class="gmenu-item" type="button" data-m="${m}"${off ? ' disabled' : ''}><i class="gmenu-rune">${rune}</i><span><b>${title}</b><small>${sub}</small></span>${key ? `<kbd>${key}</kbd>` : ''}</button>`;
+    const card = this.openModal(`
+      <p class="gm-kicker">ᛟ Othala — a ház</p>
+      <h2>Menü</h2>
+      <div class="gmenu">
+        ${item('resume', 'ᚱ', 'Folytatás', battle ? 'vissza a harcba' : 'vissza a völgybe', 'Esc')}
+        ${item('book', 'ᛉ', 'Krónika', 'a saga és a mellékszálak', '', battle || !this.menuBook)}
+        ${item('map', 'ᛜ', 'Világtérkép', 'a bejárt völgy, kattintással úti cél', 'M', battle || !this.mm)}
+        ${item('music', '♫', `Zene: ${music?.enabled ? 'be' : 'ki'}`, 'saját dallamok napszak és harc szerint', '', !music)}
+        ${item('sound', muted ? '🔇' : '🔊', `Hangok: ${muted ? 'ki' : 'be'}`, 'csapások, varázslatok, lépések')}
+        <a class="gmenu-item" href="user.php"><i class="gmenu-rune">ᛗ</i><span><b>Gyűjtemény</b><small>a sárkányaid a profilodon</small></span></a>
+        <a class="gmenu-item is-exit" href="index.php" data-m="exit"><i class="gmenu-rune">ᛞ</i><span><b>Kilépés</b><small>a játék magától ment — bármikor folytathatod</small></span></a>
+      </div>
+      <div class="gmenu-keys">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / nyilak — mozgás</span>
+        <span><kbd>Shift</kbd> — szárnyalás</span>
+        <span><kbd>E</kbd> / <kbd>Space</kbd> — beszéd, belépés</span>
+        <span><kbd>M</kbd> — térkép</span>
+        <span>kattintás — oda megy</span>
+      </div>`);
+    card.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-m]');
+      if (!b || b.disabled) return;
+      const m = b.dataset.m;
+      if (m === 'exit') { this.state.flush?.(); return; }          // a link viszi tovább
+      this.sfx.click?.();
+      if (m === 'resume') this.closeModal();
+      else if (m === 'book') { this.closeModal(); this.menuBook?.(); }
+      else if (m === 'map') { this.closeModal(); this.openWorldMap(); }
+      else if (m === 'music' || m === 'sound') {
+        if (m === 'music') { music.setEnabled(!music.enabled); this.root.querySelector('#hudMusic')?.classList.toggle('is-off', !music.enabled); }
+        else this.el.mute?.click();
+        this.closeModal(); this.openMenu();
+        this.el.card.querySelector(`[data-m="${m}"]`)?.focus();
+      }
+    });
+    return card;
+  }
 
   /** Sárkány-kártya a párbeszédablakokba. */
   dragonCard(d, { selectable = false, selected = false, extra = '' } = {}) {

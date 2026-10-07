@@ -94,15 +94,18 @@ function painter(scene, ctx) {
 /* =====================================================================
    Barlang
    ===================================================================== */
-export function caveBackdrop(scene, tier, w, h) {
-  const key = `cavebg3:${tier}:${w}x${h}`;
+/** A padló látóhatára: a csata adja meg (a leghátsó sárkány talpa fölött), különben a magasság 72%-a. */
+const horizonOf = (h, hz) => Math.round(hz ?? h * 0.72);
+
+export function caveBackdrop(scene, tier, w, h, hz) {
+  const key = `cavebg3:${tier}:${w}x${h}:${horizonOf(h, hz)}`;
   if (scene.textures.exists(key)) return key;
   const T = caveTheme(tier), L = CAVE_LOOK[T];
   const rng = mulberry32(tier * 999 + 7);
   const c = canvas(w, h), ctx = c.getContext('2d');
   const draw = painter(scene, ctx);
   const s = Math.max(0.5, Math.min(1.6, h / 760));
-  const floorY = h * 0.72;
+  const floorY = horizonOf(h, hz);
   const rock = (i) => `bt-${T}-rock${i % 4}`;
 
   // 1. Mélység: sötét boltozat, a messzi csarnok fénye középen
@@ -223,19 +226,19 @@ export function caveBackdrop(scene, tier, w, h) {
    Gyakorlótér a párbajhoz: alkonyi ég, sarkfény, cölöpkerítés, fáklyák
    ===================================================================== */
 /** A fáklyák lángjának helye (a csatajelenet ide teszi a pislákoló fényt). */
-export function arenaTorches(w, h) {
-  const s = Math.max(0.5, Math.min(1.6, h / 760)), floorY = h * 0.72;
+export function arenaTorches(w, h, hz) {
+  const s = Math.max(0.5, Math.min(1.6, h / 760)), floorY = horizonOf(h, hz);
   return [0.12, 0.38, 0.62, 0.88].map((f) => ({ x: w * f, y: floorY - 8 * s - 96 * s }));
 }
 
-export function arenaBackdrop(scene, w, h) {
-  const key = `arenabg2:${w}x${h}`;
+export function arenaBackdrop(scene, w, h, hz) {
+  const key = `arenabg2:${w}x${h}:${horizonOf(h, hz)}`;
   if (scene.textures.exists(key)) return key;
   const rng = mulberry32(2026);
   const c = canvas(w, h), ctx = c.getContext('2d');
   const draw = painter(scene, ctx);
   const s = Math.max(0.5, Math.min(1.6, h / 760));
-  const floorY = h * 0.72;
+  const floorY = horizonOf(h, hz);
 
   ctx.fillStyle = vgrad(ctx, 0, floorY, [[0, '#070b1e'], [0.55, '#1a2350'], [0.85, '#5a3a52'], [1, '#c4683a']]);
   ctx.fillRect(0, 0, w, floorY + 20);
@@ -265,7 +268,7 @@ export function arenaBackdrop(scene, w, h) {
   for (const x of posts) draw(`bt-post${Math.floor(rng() * 3)}`, x, floorY - 4 * s, s * 0.95, { flip: rng() < 0.5, shade: ['#1a120b', 0.15] });
   for (let x = 0; x < w; x += 236 * s) draw('bt-rail', x, floorY - 62 * s, s, { ax: 0, ay: 0.5 });
   for (const bx of [w * 0.25, w * 0.75]) draw('bt-banner', bx, floorY - 160 * s, s * 0.95, { ay: 0 });
-  for (const t of arenaTorches(w, h)) {
+  for (const t of arenaTorches(w, h, hz)) {
     glowAt(ctx, t.x, t.y, 110 * s, '#ffaa50', 0.4);
     draw('bt-torch', t.x, t.y - 16 * s, s, { ay: 0 });
   }
@@ -282,15 +285,15 @@ export function arenaBackdrop(scene, w, h) {
 /* =====================================================================
    Szabadtér (kóborló sárkányok, őr-csaták)
    ===================================================================== */
-export function fieldBackdrop(scene, w, h, kind = 'meadow') {
-  const key = `fieldbg2:${kind}:${w}x${h}`;
+export function fieldBackdrop(scene, w, h, kind = 'meadow', hz) {
+  const key = `fieldbg2:${kind}:${w}x${h}:${horizonOf(h, hz)}`;
   if (scene.textures.exists(key)) return key;
   const L = FIELD[kind] || FIELD.meadow;
   const rng = mulberry32(kind.length * 7919);
   const c = canvas(w, h), ctx = c.getContext('2d');
   const draw = painter(scene, ctx);
   const s = Math.max(0.5, Math.min(1.6, h / 760));
-  const floorY = h * 0.72;
+  const floorY = horizonOf(h, hz);
   const snow = kind === 'snow', ash = kind === 'ash';
 
   ctx.fillStyle = vgrad(ctx, 0, floorY, [[0, L.sky[0]], [0.6, L.sky[1]], [1, L.sky[2]]]);

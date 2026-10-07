@@ -365,8 +365,9 @@ export function buildSprites(scene) {
 
   /* --- Árnyék-ellipszis --- */
   add('shadow', 64, 24, (ctx, w, h) => {
-    const g = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2);
-    g.addColorStop(0, 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    // sötét mag a talpak alatt, puha szél — a figura a talajon áll, nem lebeg
+    const g = ctx.createRadialGradient(w / 2, w / 2, 1, w / 2, w / 2, w / 2);   // a nyújtott térben a középpont (w/2, w/2)
+    g.addColorStop(0, 'rgba(0,0,0,.78)'); g.addColorStop(0.35, 'rgba(0,0,0,.6)'); g.addColorStop(0.7, 'rgba(0,0,0,.25)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.scale(1, h / w); ctx.beginPath(); ctx.arc(w / 2, w / 2, w / 2, 0, 7); ctx.fill();
   });
 
@@ -985,7 +986,7 @@ function buildDecorSprites(add, rng) {
   });
   // Izzó repedés (lávanyílás) — a völgy pulzáló fényt tesz rá
   for (let v = 0; v < 3; v++) add(`vent${v}`, 40, 22, (ctx, w, h) => {
-    const g = ctx.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2);
+    const g = ctx.createRadialGradient(w / 2, w / 2, 1, w / 2, w / 2, w / 2);   // a nyújtott térben a középpont (w/2, w/2)
     g.addColorStop(0, 'rgba(255,140,60,.55)'); g.addColorStop(1, 'rgba(255,90,30,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = '#ffb35a'; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -1639,6 +1640,9 @@ export function dragonPortrait(scene, keys, size = 72) {
  * saját csatlakozási pontja körül forgatható (ugyanazok a pontok, amikre
  * a rajzok készültek: nyaktő 26,20 — szárnytő 36,27 a 64-es rácson).
  */
+/** A talpak közepe a kép közepéhez képest (a méret arányában, balra néző rajzon). */
+export const FOOT_DX = 0.14;
+
 export function makeDragonView(scene, keys, displaySize) {
   const cont = scene.add.container(0, 0);
   const inner = scene.add.container(0, 0);        // ezt tükrözzük irány szerint

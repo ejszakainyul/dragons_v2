@@ -9,20 +9,20 @@ import { tube, ell, horn, shard, plate } from './lib.mjs';
 const G = 58.4;
 
 const SPEC = {
-  1:  { type: 'digit',  thigh: [6.2, 6.4], shin: [4.2, 3.8], claw: 0.55, deco: 'chubby' },
+  1:  { type: 'digit',  thigh: [5.6, 6], shin: [3.8, 3.3], claw: 0.55, deco: 'chubby' },
   2:  { type: 'digit',  claw: 1.2, deco: 'scutes' },
   3:  { type: 'pillar', deco: 'wrinkles' },
   4:  { type: 'digit',  claw: 1.2, clawMat: 'crystal', deco: 'ice' },
   5:  { type: 'pillar', deco: 'lava' },
   6:  { type: 'lanky',  spur: 1, deco: 'storm' },
-  7:  { type: 'pillar', thigh: [6, 6.6], shin: [4.8, 4.5], claw: 1.4, deco: 'fur' },
+  7:  { type: 'pillar', thigh: [6, 6.6], shin: [4.2, 3.5], claw: 1.4, deco: 'fur' },
   8:  { type: 'lanky',  thigh: [4.2, 5.4], shin: [1.7, 1.3], claw: 1.6, spur: 1, deco: 'bone' },
   9:  { type: 'grasp',  claw: 1.2, spur: 1, deco: 'crystal' },
   10: { type: 'hoof',   deco: 'goat' },
   11: { type: 'lanky',  thigh: [4, 5.2], shin: [1.6, 1.3], foot: 6.6, deco: 'scutes' },
   12: { type: 'digit',  claw: 1.1, spur: 2, deco: 'rooster' },
   13: { type: 'grasp',  shin: [3.8, 3.2], claw: 1.5, deco: 'knuckles' },
-  14: { type: 'pillar', thigh: [5.8, 6.6], shin: [4.9, 4.7], deco: 'stone' },
+  14: { type: 'pillar', thigh: [5.8, 6.6], shin: [4.3, 3.6], deco: 'stone' },
   15: { type: 'digit',  claw: 1.0, deco: 'spikes' },
   16: { type: 'hoof',   shin: [3.4, 2.8], deco: 'feather' },
   17: { type: 'grasp',  claw: 1.3, clawMat: 'metal', deco: 'armor' },
@@ -30,7 +30,7 @@ const SPEC = {
 };
 const BASE = {
   digit:  { thigh: [5.2, 6.2], shin: [3.4, 2.6], knee: 8.6, ankle: 15.6, foot: 4.8 },
-  pillar: { thigh: [5.2, 6.2], shin: [4.2, 3.8], knee: 9, ankle: 16.2, foot: 4.4 },
+  pillar: { thigh: [5.4, 6.4], shin: [3.9, 3.2], knee: 9, ankle: 16.2, foot: 4.4 },
   lanky:  { thigh: [4.6, 6], shin: [2.2, 1.7], knee: 7.4, ankle: 15.4, foot: 5.6 },
   grasp:  { thigh: [5.2, 6.2], shin: [3.2, 2.6], knee: 8.6, ankle: 15.2, foot: 5.8 },
   hoof:   { thigh: [5, 6.2], shin: [2.6, 1.9], knee: 8.6, ankle: 15.6, foot: 2.4 },
@@ -42,19 +42,25 @@ function leg(hx, hy, back, S, z, far) {
   const th = S.thigh, sh = S.shin, t = S.type;
   let knee = [hx + (back ? -3.6 : -1.2), hy + S.knee], ank = [hx + (back ? 1.8 : 0.6), hy + S.ankle];
   if (t === 'lanky') { knee = [hx + (back ? -4.8 : -2.8), hy + S.knee]; ank = [hx + (back ? 3 : 1.4), hy + S.ankle]; }
-  if (t === 'pillar') { knee = [hx - 0.6, hy + S.knee]; ank = [hx - 0.2, hy + S.ankle]; }
+  if (t === 'pillar') { knee = [hx + (back ? -1.6 : -0.4), hy + S.knee]; ank = [hx + (back ? 0.6 : -0.6), hy + S.ankle]; }
   ank[1] = Math.min(ank[1], G - 3.2);
   const mat = S.mat || 'skin';
-  // Comb: a csípőnél széles izomtömeg, a teteje beleolvad a törzsbe
-  if (!far) out.push(tube([[hx + (back ? 1.2 : 0.2), hy - 3.4], [hx + (back ? 0.4 : -0.2), hy + 2.2], [knee[0] + (back ? 0.8 : 0.3), knee[1] - 1.4]], [th[0] * 0.95, th[0] * 0.9, sh[0] * 1.05], mat, { z, fade: [hy - 2.6, hy - 0.4], smooth: 1.6 }));
+  // Comb: a csípőnél széles izomtömeg (hátul combizom, elöl váll), a teteje
+  // hosszan, lágyan olvad bele a törzsbe — így nem „nadrágszár"-szerűen ül rajta
+  if (!far) {
+    const big = t === 'pillar' ? 1.12 : 1;
+    if (back) out.push(ell(hx + 1, hy + 0.6, th[1] * 1.1 * big, th[1] * 1.28 * big, -0.25, mat, { z: z - 0.6, rz: th[1] * 0.85, fade: [hy - 6.5, hy - 1.6], smooth: 1.8 }));
+    else out.push(ell(hx + 0.4, hy - 0.2, th[0] * 0.95 * big, th[0] * 1.12 * big, 0.2, mat, { z: z - 0.6, rz: th[0] * 0.8, fade: [hy - 6, hy - 1.6], smooth: 1.8 }));
+    out.push(tube([[hx + (back ? 1.2 : 0.2), hy - 3.4], [hx + (back ? 0.4 : -0.2), hy + 2.2], [knee[0] + (back ? 0.8 : 0.3), knee[1] - 1.4]], [th[0] * 0.95, th[0] * 0.9, sh[0] * 1.05], mat, { z, fade: [hy - 4.8, hy - 0.8], smooth: 1.6 }));
+  }
   out.push(tube([far ? [knee[0] + 0.5, knee[1] - 3] : [knee[0] + 0.3, knee[1] - 1.6], knee, ank], [sh[0] * k, sh[1] * k * 1.05, sh[1] * k], mat, { z, smooth: 1.4, ...(far ? { fade: [knee[1] - 3, knee[1] - 0.6] } : {}) }));
   const toe = [ank[0] - S.foot, G - 0.8];
   const clawMat = S.clawMat || 'claw';
   const cl = S.claw ?? 1;
   switch (t) {
     case 'pillar':
-      out.push(tube([[ank[0], ank[1] - 2], [ank[0] - 0.4, G - 2.4]], [sh[1] * k, sh[1] * k * 1.15], mat, { z }));
-      out.push(ell(ank[0] - 0.8, G - 2, sh[1] * k * 1.3, 2.2, 0, mat, { z }));
+      out.push(tube([[ank[0], ank[1] - 2], [ank[0] - 0.4, G - 2.6]], [sh[1] * k * 0.92, sh[1] * k * 1.08], mat, { z }));
+      out.push(ell(ank[0] - 0.8, G - 1.9, sh[1] * k * 1.35, 2, 0, mat, { z, rz: 2.4 }));
       for (let i = 0; i < 3; i++) out.push(ell(ank[0] - 4.2 * k + i * 2.5 * k, G - 0.9, 1.1, 0.9, 0, 'claw', { z: z + 2.6, smooth: 0, col: [210, 196, 170] }));
       break;
     case 'hoof': {

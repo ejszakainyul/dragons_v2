@@ -1272,3 +1272,266 @@ button.gd-card:hover { border-color: var(--rune); transform: translateY(-2px); }
 .hud-icon-btn.is-off { opacity: .45; text-decoration: line-through; }
 .hud-clock b { color: #dfe6ff; font-size: .82rem; white-space: nowrap; }
 @media (max-width: 640px) { .hud-clock { display: none; } }
+
+/* =====================================================================
+   FARAGOTT FELÜLET — a renderelt világhoz illő, megvilágított panelek
+   ---------------------------------------------------------------------
+   Ugyanaz a fény, mint a sárkányokon és a völgyön: bal felülről jön.
+   Minden panel egy palakő-lap: felül világos, alul sötét peremmel
+   (vastagsága van), belül vékony sárgaréz szegély, a sarkokban szegecs.
+   A gombok domborúak és lenyomhatók, a sávok bemélyített vájatok.
+   ===================================================================== */
+.game-shell {
+  --gx-top: #3a4157;
+  --gx-mid: #212538;
+  --gx-bot: #12141f;
+  --gx-ink: #06070c;
+  --gx-brass: #c99a4e;
+  --gx-brass-hi: #ffe2a3;
+  --gx-brass-lo: #6e4f1f;
+  --gx-text: #f3e7cc;
+  --gx-face:
+    radial-gradient(130% 100% at 18% 0%, rgba(255, 236, 200, .11), transparent 55%),
+    repeating-linear-gradient(118deg, rgba(255, 255, 255, .016) 0 2px, transparent 2px 7px),
+    linear-gradient(180deg, var(--gx-top) 0%, var(--gx-mid) 52%, var(--gx-bot) 100%);
+  --gx-rivets:
+    radial-gradient(circle at 8px 8px, var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 8px) 8px, var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at 8px calc(100% - 8px), var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), var(--gx-brass-hi) 0 1px, var(--gx-brass) 1.6px, var(--gx-brass-lo) 2.4px, transparent 3px);
+  --gx-bevel:
+    inset 0 1px 0 rgba(255, 240, 210, .24),
+    inset 0 -2px 0 rgba(0, 0, 0, .5),
+    inset 0 0 0 2px rgba(201, 154, 78, .34),
+    inset 0 0 0 3px rgba(0, 0, 0, .45);
+  --gx-drop: 0 4px 0 -1px rgba(0, 0, 0, .55), 0 14px 30px rgba(0, 0, 0, .55);
+}
+
+/* --- Panelek ------------------------------------------------------------ */
+.game-shell .hud-dragon,
+.game-shell .hud-chip,
+.game-shell .hud-quest,
+.game-shell .battle-panel,
+.game-shell .hud-toast,
+.game-shell .game-modal-card,
+.game-shell .gdl-card {
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), var(--gx-drop);
+  color: var(--gx-text);
+}
+.game-shell .hud-dragon,
+.game-shell .battle-panel,
+.game-shell .game-modal-card { background: var(--gx-rivets), var(--gx-face); }
+.game-shell .hud-dragon { border-radius: 12px; padding: 7px 14px 7px 7px; }
+.game-shell .hud-dragon-name b { color: #ffeccc; text-shadow: 0 1px 0 #000; }
+.game-shell .hud-dragon-name span { color: var(--gx-brass-hi); }
+
+/* a portré: sárgaréz keretű, belülről megvilágított medalion */
+.game-shell .hud-dragon img,
+.game-shell .bp-actor img,
+.game-shell .gd-card img {
+  border: 0;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 45% 35%, rgba(255, 226, 163, .2), transparent 60%),
+    radial-gradient(circle at 50% 60%, #1c2134, #07080d);
+  box-shadow: 0 0 0 2px var(--gx-brass), 0 0 0 3px var(--gx-ink), inset 0 2px 6px rgba(0, 0, 0, .7), 0 3px 6px rgba(0, 0, 0, .5);
+}
+
+/* --- Sávok: bemélyített vájat, fényes töltet ------------------------------ */
+.game-shell .bar {
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #05060a, #13151f);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, .85), 0 1px 0 rgba(255, 240, 210, .14);
+}
+.game-shell .bar i { box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .25); }
+.game-shell .bar-hp i { background: linear-gradient(180deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 48%), linear-gradient(90deg, #13a86b, #2dd4a7 70%, #7cf0c9); }
+.game-shell .bar-hp em { line-height: 11px; font-weight: 700; }
+.game-shell .bar-xp { height: 5px; }
+.game-shell .bar-xp i { background: linear-gradient(180deg, rgba(255, 255, 255, .4), transparent 55%), linear-gradient(90deg, #6a46ff, #b18cff); }
+.game-shell .bp-chorus .bar { height: 12px; }
+
+/* --- Erőforrás-jelzők és ikongombok -------------------------------------- */
+.game-shell .hud-chip { border-radius: 10px; padding: 7px 13px; }
+.game-shell .hud-chip b { color: var(--gx-brass-hi); text-shadow: 0 1px 0 #000; }
+.game-shell .hud-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--gx-text);
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .6), 0 8px 16px rgba(0, 0, 0, .45);
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease), color .12s;
+}
+.game-shell .hud-icon-btn:hover { color: #fff; border-color: var(--gx-ink); box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .6), 0 0 18px rgba(255, 196, 107, .35); transform: translateY(-1px); }
+.game-shell .hud-icon-btn:active { transform: translateY(2px); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .6), inset 0 0 0 2px rgba(201, 154, 78, .3); }
+.game-shell .hud-icon-btn .rune-ico { color: var(--gx-brass-hi); text-shadow: 0 0 8px rgba(255, 196, 107, .5); }
+.hud-burger { display: grid; gap: 3px; width: 16px; }
+.hud-burger i { display: block; height: 2px; border-radius: 2px; background: var(--gx-brass-hi); box-shadow: 0 1px 0 #000; }
+.game-shell .hud-menu-btn { background: radial-gradient(circle at 50% 30%, rgba(255, 196, 107, .18), transparent 70%), var(--gx-face); }
+
+/* --- Gombok a játékban: domború kő, lenyomható; a fő gomb izzó réz ------- */
+.game-shell .btn {
+  border: 1px solid var(--gx-ink);
+  border-radius: 10px;
+  background: var(--gx-face);
+  color: var(--gx-text);
+  box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .65), 0 8px 18px rgba(0, 0, 0, .4);
+  text-shadow: 0 1px 0 #000;
+}
+.game-shell .btn:hover { color: #fff; border-color: var(--gx-ink); box-shadow: var(--gx-bevel), 0 3px 0 -1px rgba(0, 0, 0, .65), 0 0 22px rgba(255, 196, 107, .32); }
+.game-shell .btn:active { transform: translateY(2px); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .65), inset 0 0 0 2px rgba(201, 154, 78, .3); }
+.game-shell .btn-primary {
+  background:
+    radial-gradient(120% 100% at 25% 0%, rgba(255, 250, 225, .55), transparent 50%),
+    linear-gradient(180deg, #ffcf86 0%, #ff9442 48%, #c9501c 100%);
+  color: #1b0d03;
+  text-shadow: 0 1px 0 rgba(255, 228, 180, .6);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 220, .8), inset 0 -3px 0 rgba(110, 30, 0, .45), 0 3px 0 -1px #5a2208, 0 8px 22px rgba(255, 110, 40, .3);
+}
+.game-shell .btn-primary:hover { color: #1b0d03; box-shadow: inset 0 1px 0 rgba(255, 245, 220, .8), inset 0 -3px 0 rgba(110, 30, 0, .45), 0 3px 0 -1px #5a2208, 0 0 30px rgba(255, 140, 60, .55); }
+.game-shell .btn-danger { background: linear-gradient(180deg, #ff7a86, #c1273c); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 220, 220, .6), inset 0 -3px 0 rgba(80, 0, 10, .4), 0 3px 0 -1px #4a0812, 0 8px 18px rgba(0, 0, 0, .4); }
+.game-shell .bp-buttons .btn[disabled] { filter: grayscale(.8) brightness(.75); opacity: .55; }
+
+/* --- Harci panel ---------------------------------------------------------- */
+.game-shell .battle-panel { border-radius: 16px; padding: 12px 16px 14px; }
+.game-shell .bp-chip { border-radius: 9px; border-width: 2px; box-shadow: 0 2px 0 rgba(0, 0, 0, .6), inset 0 0 6px rgba(0, 0, 0, .6); background: radial-gradient(circle at 50% 40%, #222842, #07080d); }
+.game-shell .bp-chip.is-now { box-shadow: 0 0 0 2px var(--gx-ink), 0 0 16px rgba(255, 208, 138, .85); }
+.game-shell .bp-order::before,
+.game-shell .bp-chorus > span { color: var(--gx-brass); text-shadow: 0 1px 0 #000; }
+.game-shell .bp-energy i { background: radial-gradient(circle at 40% 35%, #3a4566, #141a2c); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .7); }
+.game-shell .bp-energy i.on { background: radial-gradient(circle at 40% 35%, #ffffff, #7ce7ff 45%, #2a9fd0); box-shadow: 0 0 8px #7ce7ff; }
+.game-shell .bp-hint { background: linear-gradient(180deg, rgba(255, 160, 80, .16), rgba(255, 120, 40, .06)); border: 1px solid rgba(255, 208, 138, .45); box-shadow: inset 0 1px 0 rgba(255, 240, 210, .15); }
+.game-shell .bp-log { border-top: 1px solid rgba(201, 154, 78, .2); padding-top: 6px; }
+
+/* --- Párbeszédablak: faragott tábla aranyozott címmel -------------------- */
+.game-shell .game-modal { background: radial-gradient(ellipse at center, rgba(3, 5, 12, .5), rgba(3, 5, 12, .88)); }
+.game-shell .game-modal-card {
+  border-radius: 18px;
+  padding: 28px 30px 24px;
+  box-shadow: var(--gx-bevel), inset 0 0 0 7px rgba(6, 7, 12, .35), inset 0 0 0 8px rgba(201, 154, 78, .18), 0 6px 0 -1px rgba(0, 0, 0, .6), 0 36px 90px rgba(0, 0, 0, .75);
+}
+.game-shell .game-modal-card h2 {
+  color: #ffe7c2;
+  text-shadow: 0 2px 0 #000, 0 0 22px rgba(255, 170, 90, .35);
+}
+.game-shell .game-modal-card > h2::after {
+  content: '';
+  display: block;
+  height: 12px;
+  margin-top: 8px;
+  background:
+    radial-gradient(circle, var(--gx-brass-hi) 0 2.5px, var(--gx-brass) 3.2px, transparent 4px) center / 12px 12px no-repeat,
+    linear-gradient(90deg, transparent, var(--gx-brass) 18%, var(--gx-brass-hi) 50%, var(--gx-brass) 82%, transparent) center / 100% 1px no-repeat;
+}
+.game-shell .gm-kicker { color: var(--gx-brass); text-shadow: 0 1px 0 #000; }
+.game-shell .gm-close {
+  top: 12px; right: 12px;
+  border-radius: 50%;
+  color: var(--gx-brass-hi);
+  background: radial-gradient(circle at 40% 30%, #3a4157, #12141f);
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .25), 0 0 0 2px rgba(201, 154, 78, .4), 0 3px 6px rgba(0, 0, 0, .5);
+}
+.game-shell .gm-close:hover { color: #fff; box-shadow: inset 0 1px 0 rgba(255, 240, 210, .25), 0 0 0 2px var(--gx-brass), 0 0 14px rgba(255, 196, 107, .5); }
+.game-shell .gd-card {
+  background: linear-gradient(180deg, rgba(58, 65, 87, .55), rgba(18, 20, 31, .85));
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .14), inset 0 0 0 1px rgba(201, 154, 78, .22), 0 3px 0 -1px rgba(0, 0, 0, .55);
+}
+.game-shell button.gd-card:hover { box-shadow: inset 0 1px 0 rgba(255, 240, 210, .14), inset 0 0 0 1px var(--gx-brass), 0 0 18px rgba(255, 196, 107, .25); }
+.game-shell .gd-card.is-selected { box-shadow: inset 0 0 0 2px var(--gx-brass-hi), 0 0 20px rgba(255, 196, 107, .4); }
+
+/* --- Értesítések, felszólítás, vidéknév ---------------------------------- */
+.game-shell .hud-toast { border-radius: 12px; padding: 11px 20px; border-left: 4px solid var(--gx-brass); }
+.game-shell .hud-toast.is-good { border-left-color: #2dd4a7; }
+.game-shell .hud-toast.is-warn { border-left-color: #ffc857; }
+.game-shell .hud-toast.is-bad  { border-left-color: #ff5d6c; }
+.game-shell .hud-area {
+  padding: 4px 34px 8px;
+  background:
+    linear-gradient(90deg, transparent, var(--gx-brass) 20%, var(--gx-brass-hi) 50%, var(--gx-brass) 80%, transparent) bottom / 100% 1px no-repeat,
+    radial-gradient(ellipse at center, rgba(6, 7, 12, .55), transparent 70%);
+}
+.game-shell .hud-quest { border-radius: 12px; }
+.game-shell .hud-quest small { color: var(--gx-brass); }
+
+/* --- Kistérkép: sárgaréz keret ------------------------------------------- */
+.game-shell .hud-map {
+  background: var(--gx-face);
+  border: 1px solid var(--gx-ink);
+  box-shadow: var(--gx-bevel), var(--gx-drop);
+}
+.game-shell .hud-map-btn { border-radius: 8px; background: var(--gx-face); border: 1px solid var(--gx-ink); box-shadow: var(--gx-bevel); color: var(--gx-brass-hi); }
+
+/* --- Játékmenü -------------------------------------------------------------- */
+.gmenu { display: grid; gap: 8px; margin-top: 6px; }
+.gmenu-item {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px 10px 10px;
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  color: var(--gx-text);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(58, 65, 87, .6), rgba(18, 20, 31, .9));
+  border: 1px solid var(--gx-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .16), inset 0 0 0 1px rgba(201, 154, 78, .2), 0 3px 0 -1px rgba(0, 0, 0, .6);
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+}
+.gmenu-item:hover, .gmenu-item:focus-visible {
+  color: #fff;
+  outline: none;
+  transform: translateX(3px);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .2), inset 0 0 0 1px var(--gx-brass), 0 0 20px rgba(255, 196, 107, .25);
+}
+.gmenu-item:active { transform: translateY(2px); }
+.gmenu-item[disabled] { opacity: .4; cursor: not-allowed; transform: none; box-shadow: inset 0 0 0 1px rgba(201, 154, 78, .12); }
+.gmenu-item b { display: block; font-family: 'Cinzel', serif; font-size: .98rem; color: #ffeccc; }
+.gmenu-item small { display: block; font-size: .78rem; color: var(--muted); }
+.gmenu-rune {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-family: var(--font-rune);
+  font-style: normal;
+  font-size: 1.15rem;
+  color: #1b0d03;
+  background: radial-gradient(circle at 40% 32%, #fff3c8, #e8a54e 55%, #8a5a1e);
+  box-shadow: inset 0 -2px 0 rgba(90, 40, 0, .4), 0 0 0 2px var(--gx-ink), 0 0 12px rgba(255, 180, 90, .35);
+}
+.gmenu-item.is-exit .gmenu-rune { background: radial-gradient(circle at 40% 32%, #ffe0e0, #e06070 55%, #7a1828); }
+.gmenu-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(201, 154, 78, .25);
+  font-size: .78rem;
+  color: var(--muted);
+}
+.gmenu-keys kbd { margin-right: 2px; }
+
+/* Keskeny kijelzőn a ritkább gombok a menübe költöznek */
+@media (max-width: 720px) {
+  .game-shell #hudBook,
+  .game-shell #hudMusic,
+  .game-shell #hudMute,
+  .game-shell .hud-res a.hud-icon-btn { display: none; }
+  .game-shell .hud-icon-btn { width: 36px; height: 36px; }
+  .game-shell .game-modal-card { padding: 22px 16px 18px; }
+  .gmenu-item { padding: 8px 10px; grid-template-columns: 32px 1fr auto; }
+  .gmenu-rune { width: 32px; height: 32px; font-size: 1rem; }
+  .gmenu-keys { display: none; }
+}
