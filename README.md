@@ -280,6 +280,7 @@ csapat. A kikelt és a megszelídített sárkányok a közös gyűjteménybe ker
 | `tools/dragonart/` | a testrészek formái és gyártója (`dragons/hd/`) |
 | `tools/worldart/` | a völgy tárgyai (`img/world/`), a csatahátterek darabjai és Níðhöggr részei (`img/battle/`), `world-manifest.js` |
 | `script/game/backdrops.js` | a csatahátterek összerakása a képernyő méretére (barlangok, szabadtér, karám) |
+| `tools/iconart/` | az oldal ikonja (medalion sárkányfejjel): `favicon.ico`, `img/icon/`, `site.webmanifest` |
 | `script/game/music.js` | saját zene WebAudio-szintézissel (völgy, éjszaka, csata, boss) |
 | `script/game/daynight.js` | napszakok: közös világóra, éjjeli fények, éji vadak |
 | `script/game/tiles.js` | a csempék képpontonként (domborított textúra, part, szegélycsempék a vidékhatárokra) |
