@@ -43,7 +43,11 @@ function nav_rune(string $rune, string $meaning): string
 <meta name="description" content="Sárkányok és Vikingek — nevelj saját sárkányt, harcolj az arénában, és írd meg a legendádat.">
 <meta name="theme-color" content="#05070f">
 <title><?= e($pageTitle) ?></title>
-<link rel="icon" href="dragons/head[8].png">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="img/icon/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="img/icon/favicon-16.png">
+<link rel="apple-touch-icon" href="img/icon/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
 <script>
   /* Könnyített háttér gyengébb gépen — MÉG a festés előtt, hogy ne
      induljon el fölöslegesen egyetlen drága réteg sem. */
