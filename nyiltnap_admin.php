@@ -6,7 +6,10 @@
  *   - nullázás fiókonként vagy egyszerre: a látogató bent marad, az oldala
  *     magától visszaugrik a túra elejére
  *   - fiókok ki/be kapcsolása (a nap végén: mind ki)
- *   - ?print=1  nyomtatható kódkártyák
+ *   - továbbküldés: a látogató oldala ≤ 5 mp-en belül a kért állomásra ugrik
+ *   - ideiglenes háromjegyű kódok, „Új kódok"-kal bármikor cserélhetők
+ *   - ?print=1  nyomtatható kódkártyák (&auto=1: rögtön a nyomtatás ablak)
+ *   - ?pdf=1    ugyanez PDF-ben, letöltésre
  */
 require_once __DIR__ . '/inc/bootstrap.php';
 require_login();
@@ -38,6 +41,7 @@ function od_admin_payload(): array
         'dragons' => (int)$r['sarkanyok'],
         'stories' => (int)$r['sagak'],
         'resets'  => max(0, (int)$r['korszak'] - 1),
+        'pending' => $r['kuldes'] ?? null,
     ], openday_list());
     return ['accounts' => $rows, 'now' => time()];
 }
@@ -59,6 +63,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!in_array($uid, $ids, true)) throw new RuntimeException('Nincs ilyen bemutató fiók.');
                 openday_reset($uid);
                 $msg = 'Nullázva.';
+                break;
+            case 'new_codes':
+                openday_new_codes();
+                $msg = 'Új kódok — a régiek már nem működnek, aki bent van, bent marad.';
+                break;
+            case 'send':
+                if (!in_array($uid, $ids, true)) throw new RuntimeException('Nincs ilyen bemutató fiók.');
+                $target = (string)($_POST['target'] ?? '');
+                openday_send($uid, $target);
+                $msg = 'Továbbküldve: ' . ($target === 'hub' ? 'a túra kezdőlapjára' : OPENDAY_STEPS[$target][0]) . ' (≤ 5 mp).';
+                break;
+            case 'skip':
+                if (!in_array($uid, $ids, true)) throw new RuntimeException('Nincs ilyen bemutató fiók.');
+                $cur = openday_next(openday_done(openday_row($uid, true)));
+                if ($cur === null) throw new RuntimeException('Ez a látogató már végigért.');
+                openday_mark_uid($uid, $cur);
+                $after = openday_next(openday_done(openday_row($uid, true)));
+                openday_send($uid, $after ?? 'hub');
+                $msg = OPENDAY_STEPS[$cur][0] . ' kihagyva → ' . ($after ? OPENDAY_STEPS[$after][0] : 'túra vége');
                 break;
             case 'reset_all':
                 foreach ($ids as $id) openday_reset($id);
@@ -98,6 +121,18 @@ $https = ($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off'
 $dir   = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
 $entry = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir . '/nyiltnap.php';
 
+/* --- PDF letöltés ---------------------------------------------------------- */
+if (isset($_GET['pdf'])) {
+    require_once __DIR__ . '/inc/openday_pdf.php';
+    $pdf = openday_cards_pdf($data['accounts'], $entry);
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="nyiltnap-kodkartyak-' . date('Y-m-d') . '.pdf"');
+    header('Content-Length: ' . strlen($pdf));
+    header('Cache-Control: no-store');
+    echo $pdf;
+    exit;
+}
+
 /* --- Nyomtatható kártyák -------------------------------------------------- */
 if (isset($_GET['print'])) { ?>
 <!doctype html>
@@ -123,6 +158,7 @@ if (isset($_GET['print'])) { ?>
     <?php endforeach; ?>
   </div>
   <?php if (!$data['accounts']): ?><p>Még nincsenek fiókok — hozd létre őket a vezérlőben.</p><?php endif; ?>
+  <?php if (isset($_GET['auto'])): ?><script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script><?php endif; ?>
 </body>
 </html>
 <?php exit; }
@@ -143,7 +179,9 @@ require __DIR__ . '/header.php';
     </div>
     <div class="od-admin-actions">
       <button class="btn btn-sm" type="button" data-act="create">＋ Fiókok létrehozása</button>
-      <a class="btn btn-sm" href="nyiltnap_admin.php?print=1" target="_blank" rel="noopener">🖶 Kódkártyák</a>
+      <a class="btn btn-sm" href="nyiltnap_admin.php?print=1&amp;auto=1" target="_blank" rel="noopener">🖶 Nyomtatás</a>
+      <a class="btn btn-sm" href="nyiltnap_admin.php?pdf=1">⇩ PDF</a>
+      <button class="btn btn-sm" type="button" data-act="new_codes">⟳ Új kódok</button>
       <button class="btn btn-sm" type="button" data-act="all_on">Mind be</button>
       <button class="btn btn-sm" type="button" data-act="all_off">Mind ki</button>
       <button class="btn btn-sm btn-danger" type="button" data-act="reset_all">⟲ Mind nullázása</button>

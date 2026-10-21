@@ -4,7 +4,8 @@
    Ha a segítő a vezérlőből nullázza a fiókot, a látogató oldala pár
    másodpercen belül magától visszaugrik a túra elejére (kilépés nélkül).
    Közben a túrasáv is frissül: ha az állomás teljesült, megjelenik a
-   „Következő" gomb.
+   „Következő" gomb — és ha a segítő a vezérlőből továbbküldi, az oldal
+   átugrik a kért állomásra.
    ===================================================================== */
 (() => {
   const OD = window.OPENDAY;
@@ -40,6 +41,9 @@
       const r = await fetch('nyiltnap.php?api=ping', { credentials: 'same-origin', cache: 'no-store' });
       const d = await r.json();
       if (!d.demo || d.epoch !== OD.epoch) { location.replace('nyiltnap.php'); return; }
+      // a segítő a vezérlőből továbbküldte egy állomásra
+      const here = location.pathname.split('/').pop() || 'index.php';
+      if (d.go && d.go !== here) { location.href = d.go; return; }
       paint(d.done || []);
     } catch { /* hálózati hiba: a következő körben újra */ }
     busy = false;
