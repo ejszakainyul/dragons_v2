@@ -465,15 +465,19 @@ cserél, a régi kártyák azonnal érvénytelenek (aki bent van, bent marad). �
 haladás 5 mp-enként (ki hol tart, ki játszik épp), **továbbküldés** — a látogató
 oldala pár másodpercen belül a választott állomásra ugrik (pl. ha a túra
 kezdőlapján ragadt), **kihagyás** — a mostani állomás késznek jelölve, a látogató
-megy a következőre, **nullázás** fiókonként vagy egyszerre, ki/bekapcsolás,
+megy a következőre — mindkettő **mindenkinek egyszerre** is (csak akik épp bent
+vannak), **nullázás** fiókonként vagy egyszerre, ki/bekapcsolás,
 kódkártyák: „Nyomtatás" (azonnal a nyomtatási ablak) és „PDF" (A4, 16 vágható
 kártya, letöltésre — külső könyvtár nélkül, `inc/openday_pdf.php`).
 A nullázás nem lépteti ki a látogatót: a fiók „korszaka" lép, a nyitott oldala
 pár másodpercen belül magától a túra elejére ugrik, a játék régi mentését pedig
 a szerver elutasítja. A nap végén: „Mind ki" — a kódok onnantól nem működnek.
 
-Az AI-saga OpenAI-kulccsal fut (`OPENAI_API_KEY` vagy `config.local.php`); kulcs
-nélkül a beépített mesélő ír — a vezérlő tetején látszik, melyik működik.
+Az AI-saga OpenAI-kulccsal fut. A kulcs a **`config.secret.php`**-ba kerül (minta:
+`config.secret.example.php`) — ez a `.gitignore`-ban van, a szerverre kézzel kell
+feltölteni a `config.php` mellé, így a nyilvános repóba sosem jut kulcs (onnan az
+OpenAI azonnal letiltaná). Az `OPENAI_API_KEY` környezeti változó is működik.
+Kulcs nélkül a beépített mesélő ír — a vezérlő tetején látszik, melyik működik.
 
 Fájlok: `inc/openday.php` (logika, őr), `nyiltnap.php`, `nyiltnap_admin.php`,
 `script/openday.js`, `script/openday_admin.js`, `style/openday.css`,

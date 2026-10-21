@@ -33,6 +33,9 @@ const OPENDAY_ACCOUNTS = [
     'RAN'  => 'Rán',   'EIR'  => 'Eir',   'BRAG' => 'Bragi', 'NJOR' => 'Njörðr',
 ];
 
+/** Ennyi másodpercen belül jelzett oldal = a látogató épp bent van (a nyitott oldal 5 mp-enként jelez). */
+const OPENDAY_ONLINE = 60;
+
 /** A nyílt napi táblák (idempotens — az első használatkor magától létrejön). */
 function openday_install(): void
 {
@@ -147,6 +150,12 @@ function openday_login(string $code): ?array
     $_SESSION['demo'] = 1;
     $_SESSION['demo_epoch'] = (int)$row['korszak'];
     openday_touch();
+    // egy korábbi (más látogatónak szánt) függő továbbküldés ne dobja el rögtön
+    $stmt = db()->prepare('UPDATE sarkanyok_nyiltnap SET kuldes = NULL WHERE user_id = ?');
+    $uid  = (int)$row['id'];
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $stmt->close();
     return $row;
 }
 

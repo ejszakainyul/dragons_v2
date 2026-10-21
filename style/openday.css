@@ -130,6 +130,13 @@
 .od-admin-head h1 { margin: 0 0 4px; }
 .od-admin-head .muted { max-width: 70ch; margin: 0; }
 .od-admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.od-all {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 178, 92, .1), rgba(255, 120, 40, .04)); border: 1px solid rgba(255, 178, 92, .4);
+}
+.od-all b { font-family: 'Cinzel', serif; color: #ffe7c2; margin-right: 4px; }
+.od-all select { min-width: 240px; padding: 7px 10px; border-radius: 10px; font: 600 .85rem Inter, sans-serif; color: var(--text); background: #0b1020; border: 1px solid var(--line-strong); }
+@media (max-width: 720px) { .od-all select { min-width: 0; flex: 1 1 100%; } }
 .od-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .od-stats div { padding: 12px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
 .od-stats b { font: 900 1.8rem/1 'Cinzel', serif; }

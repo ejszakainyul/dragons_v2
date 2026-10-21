@@ -74,6 +74,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 openday_send($uid, $target);
                 $msg = 'Továbbküldve: ' . ($target === 'hub' ? 'a túra kezdőlapjára' : OPENDAY_STEPS[$target][0]) . ' (≤ 5 mp).';
                 break;
+            case 'send_all':
+                // mindenki egyszerre: a saját következő állomására ('next') vagy egy közös helyre
+                $target = (string)($_POST['target'] ?? 'next');
+                if ($target !== 'next' && $target !== 'hub' && !isset(OPENDAY_STEPS[$target])) throw new RuntimeException('Ismeretlen állomás.');
+                $n = 0;
+                foreach (openday_list() as $r) {
+                    if (!(int)$r['aktiv'] || $r['ago'] === null || $r['ago'] > OPENDAY_ONLINE) continue;   // csak aki épp bent van
+                    openday_send((int)$r['user_id'], $target === 'next' ? ($r['next'] ?? 'hub') : $target);
+                    $n++;
+                }
+                if (!$n) throw new RuntimeException('Most senki sincs bent (az elmúlt percben egyik oldal sem jelzett).');
+                $msg = "{$n} látogató továbbküldve: " . ($target === 'next' ? 'mindenki a saját következő állomására'
+                     : ($target === 'hub' ? 'a túra kezdőlapjára' : OPENDAY_STEPS[$target][0])) . ' (≤ 5 mp).';
+                break;
+            case 'skip_all':
+                $n = 0;
+                foreach (openday_list() as $r) {
+                    if (!(int)$r['aktiv'] || $r['next'] === null || $r['ago'] === null || $r['ago'] > OPENDAY_ONLINE) continue;
+                    $uidR = (int)$r['user_id'];
+                    openday_mark_uid($uidR, $r['next']);
+                    openday_send($uidR, openday_next(openday_done(openday_row($uidR, true))) ?? 'hub');
+                    $n++;
+                }
+                if (!$n) throw new RuntimeException('Most senki sincs bent, akinél ki lehetne hagyni.');
+                $msg = "{$n} látogatónál kihagyva a mostani állomás — mindenki megy a következőre.";
+                break;
             case 'skip':
                 if (!in_array($uid, $ids, true)) throw new RuntimeException('Nincs ilyen bemutató fiók.');
                 $cur = openday_next(openday_done(openday_row($uid, true)));
@@ -187,6 +213,20 @@ require __DIR__ . '/header.php';
       <button class="btn btn-sm btn-danger" type="button" data-act="reset_all">⟲ Mind nullázása</button>
     </div>
   </header>
+
+  <div class="od-all" role="group" aria-label="Mindenki egyszerre">
+    <b>Mindenki egyszerre:</b>
+    <small class="muted">(aki épp bent van)</small>
+    <select id="odAllTarget" aria-label="Közös célállomás">
+      <option value="next">▶ mindenki a saját következő állomására</option>
+      <option value="hub">a túra kezdőlapjára</option>
+      <?php foreach (OPENDAY_STEPS as $k => [$title]): ?>
+        <option value="<?= e($k) ?>"><?= e($title) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button class="btn btn-sm btn-primary" type="button" data-act="send_all">Küldés mindenkinek ➜</button>
+    <button class="btn btn-sm" type="button" data-act="skip_all" title="Mindenkinél késznek jelöli a mostani állomást, és továbbküld a következőre">Kihagyás mindenkinél ⏭</button>
+  </div>
 
   <?php if ((string)app_config('openai.api_key', '') !== ''): ?>
     <p class="od-ai-status is-on"><span class="od-ai">AI</span> A saga-állomáson a mesterséges intelligencia ír (OpenAI, <?= e(app_config('openai.model', '')) ?>).</p>

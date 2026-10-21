@@ -15,7 +15,7 @@
 
   function render(data) {
     const acc = data.accounts;
-    const live = acc.filter((a) => a.ago != null && a.ago < 90).length;
+    const live = acc.filter((a) => a.ago != null && a.ago <= 60).length;
     const finished = acc.filter((a) => a.done.length === steps.length).length;
     const on = acc.filter((a) => a.active).length;
     stats.innerHTML = `
@@ -41,7 +41,7 @@
         .map(([k, t]) => `<option value="${k}"${k === def ? ' selected' : ''}>${k === a.next ? '▶ ' : ''}${esc(t)}</option>`).join('');
       const pend = a.pending ? `<span class="od-acc-pend">küldés folyamatban → ${esc(a.pending === 'hub' ? 'Túra' : C.steps[a.pending]?.[0] || a.pending)}</span>` : '';
       return `
-        <article class="od-acc ${a.active ? '' : 'is-off'} ${a.ago != null && a.ago < 90 ? 'is-live' : ''} ${a.next ? '' : 'is-finished'}" data-id="${a.id}">
+        <article class="od-acc ${a.active ? '' : 'is-off'} ${a.ago != null && a.ago <= 60 ? 'is-live' : ''} ${a.next ? '' : 'is-finished'}" data-id="${a.id}">
           <header>
             <span class="od-acc-code">${esc(a.code)}</span>
             <span class="od-acc-name">${esc(a.name)}<small>${agoText(a.ago)}</small></span>
@@ -86,10 +86,16 @@
     const b = e.target.closest('button[data-act]');
     if (!b) return;
     const act = b.dataset.act, id = b.dataset.id;
-    const extra = act === 'send' ? { target: grid.querySelector(`select[data-pick="${id}"]`).value } : {};
+    const extra = act === 'send' ? { target: grid.querySelector(`select[data-pick="${id}"]`).value }
+      : act === 'send_all' ? { target: document.getElementById('odAllTarget').value } : {};
     const card = id ? grid.querySelector(`[data-id="${id}"]`) : null;
     const who = card ? card.querySelector('.od-acc-code').textContent : '';
     if (act === 'reset_all' && !confirm('Biztosan nullázod MIND a 16 fiók haladását? A látogatók bent maradnak, de elölről kezdik.')) return;
+    if (act === 'send_all') {
+      const sel = document.getElementById('odAllTarget');
+      if (!confirm(`Minden bekapcsolt fiók látogatóját továbbküldöd: ${sel.options[sel.selectedIndex].text}. Mehet?`)) return;
+    }
+    if (act === 'skip_all' && !confirm('Mindenkinél késznek jelölöd a mostani állomást, és mindenki megy a következőre. Mehet?')) return;
     if (act === 'new_codes' && !confirm('Új kódot kap mind a 16 fiók — a régi kártyák nem fognak működni (aki bent van, bent marad). Mehet?')) return;
     if (act === 'all_off' && !confirm('Kikapcsolod az összes fiókot? A kódok nem fognak működni, a bent lévők kikerülnek.')) return;
     b.disabled = true;

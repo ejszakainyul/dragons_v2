@@ -1,2 +1,5 @@
 # Jelszavakat tartalmazó helyi beállítások
 config.local.php
+
+# API-kulcsok (pl. OpenAI) — SOHA nem kerül fel GitHubra: a repó nyilvános
+config.secret.php

@@ -16,6 +16,7 @@ if (($_GET['api'] ?? '') === 'ping') {
     header('Cache-Control: no-store');
     if (!is_demo()) exit(json_encode(['demo' => false]));
     $uid  = current_user_id();
+    openday_touch();                              // a vezérlő így látja, ki van épp bent
     $go   = openday_take_send($uid);              // a vezérlő továbbküldte (≤ 5 mp)
     $row  = openday_row($uid, true);
     $done = openday_done($row);
