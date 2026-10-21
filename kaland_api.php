@@ -38,6 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_valid()) {
     fail('Lejárt a munkamenet. Töltsd újra az oldalt.', 403);
 }
 
+// Nyílt nap: a nullázás előtti oldal (régi korszak) már nem írhat vissza semmit
+if (is_demo() && $_SERVER['REQUEST_METHOD'] === 'POST'
+    && (int)($_POST['epoch'] ?? 0) !== (int)(openday_row($uid)['korszak'] ?? 0)) {
+    out(['error' => 'A fiókodat épp nullázták — a túra elölről indul.', 'reset' => true], 409);
+}
+
 try {
     switch ($action) {
 
@@ -76,6 +82,8 @@ try {
         $data = json_decode($json, true);
         if (!is_array($data) || ($data['v'] ?? null) !== 1) fail('Hibás mentés.');
         game_store_save($uid, $json);
+        if (!empty($data['cleared']['1'])) openday_mark('game');
+        else openday_touch();
         out(['ok' => true]);
 
     /* ------------------------------------------------------------------ */

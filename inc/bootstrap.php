@@ -372,3 +372,9 @@ function dragon_power(array $d): int
 {
     return (int)round(((int)$d['hp']) * 0.6 + ((int)$d['dmg']) * 4);
 }
+
+/* =======================================================================
+   Nyílt nap: bemutató fiókok, vezetett túra, korlátozott mód
+   ===================================================================== */
+require_once __DIR__ . '/openday.php';
+openday_guard();

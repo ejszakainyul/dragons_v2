@@ -8,7 +8,8 @@
 import { deriveStats, levelOf } from './rules.js';
 
 export class Api {
-  constructor(url, csrf) { this.url = url; this.csrf = csrf; }
+  /** @param extra minden POST-hoz csatolt mezők (nyílt napon: a fiók korszaka) */
+  constructor(url, csrf, extra = {}) { this.url = url; this.csrf = csrf; this.extra = extra; }
 
   async get(action) {
     const r = await fetch(`${this.url}?action=${action}`, { credentials: 'same-origin' });
@@ -21,6 +22,7 @@ export class Api {
     const fd = new FormData();
     fd.append('_csrf', this.csrf);
     fd.append('action', action);
+    for (const [k, v] of Object.entries(this.extra)) fd.append(k, v);
     const put = (k, v) => {
       if (v && typeof v === 'object') for (const [kk, vv] of Object.entries(v)) put(`${k}[${kk}]`, vv);
       else fd.append(k, v);
@@ -32,6 +34,8 @@ export class Api {
   async post(action, fields) {
     const r = await fetch(this.url, { method: 'POST', body: this.#form(action, fields), credentials: 'same-origin' });
     const data = await r.json().catch(() => ({ error: 'Érvénytelen válasz a szervertől.' }));
+    // Nyílt nap: a segítő közben nullázta a fiókot — vissza a túra elejére
+    if (data.reset) { location.replace('nyiltnap.php'); throw new Error(data.error); }
     if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
     return data;
   }

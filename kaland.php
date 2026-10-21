@@ -48,7 +48,11 @@ foreach (glob(__DIR__ . '/script/game/*.js') ?: [] as $file) {
       <button class="hud-icon-btn" id="hudBook" type="button" title="Krónika: a saga és a mellékszálak"><span class="rune-ico">ᛉ</span></button>
       <button class="hud-icon-btn" id="hudMusic" type="button" aria-label="Zene ki" title="Zene be/ki">♫</button>
       <button class="hud-icon-btn" id="hudMute" type="button" aria-label="Hang ki">🔊</button>
+      <?php if (is_demo()): ?>
+      <a class="hud-icon-btn" href="nyiltnap.php" title="Vissza a nyílt napi túrához"><span class="rune-ico">ᛟ</span></a>
+      <?php else: ?>
       <a class="hud-icon-btn" href="user.php" title="A gyűjteményed (profil)"><span class="rune-ico">ᛗ</span></a>
+      <?php endif; ?>
       <button class="hud-icon-btn hud-menu-btn" id="hudMenu" type="button" title="Menü (Esc)" aria-label="Menü"><span class="hud-burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
     </div>
 
@@ -98,6 +102,10 @@ foreach (glob(__DIR__ . '/script/game/*.js') ?: [] as $file) {
   window.GAME = {
     api:  'kaland_api.php',
     csrf: <?= json_encode(csrf_token()) ?>,
+<?php if (is_demo()): ?>
+    demo:  true,                 // nyílt nap: egy barlang, vezetett út (inc/openday.php)
+    epoch: <?= (int)(openday_row(current_user_id())['korszak'] ?? 0) ?>,
+<?php endif; ?>
   };
 </script>
 <script type="importmap"><?= json_encode($importMap, JSON_UNESCAPED_SLASHES) ?></script>

@@ -232,6 +232,10 @@ export class Story {
   }
 
   renderTracker() {
+    if (this.g.demo && this.demoDone) {
+      this.g.hud.setQuest({ kicker: 'Nyílt nap', goal: 'Kész a kaland! Kattints ide, és vissza a túrához.', done: true });
+      return;
+    }
     const q = this.quest;
     this.g.hud.setQuest(q
       ? { kicker: q.ch.join(' — '), goal: q.goal }
@@ -285,6 +289,7 @@ export class Story {
     this.#reward(q.reward, `ᛟ <b>${esc(q.goal)}</b> — teljesítve`);
     this.s.q++;
     state.commit();
+    if (this.g.demo && q.id === 'cave1') { this.renderTracker(); await this.demoEnd(); return; }
     if (q.finale) await this.#finale();
     const next = this.quest;
     this.renderTracker();
@@ -336,6 +341,30 @@ export class Story {
   }
 
   /** A saga vége: animált zárókép (ending.js); ha az nem sikerül, egyszerű ablak. */
+  /** Nyílt nap: az első barlang után vége a kalandnak. */
+  get demoDone() { return this.s.q > QI.cave1; }
+
+  async demoEnd() {
+    const { hud, state, sfx } = this.g;
+    await state.flush();                       // a szerver így jelöli késznek az állomást
+    sfx.levelUp?.();
+    return new Promise((resolve) => {
+      const st = state.save.stats;
+      const card = hud.openModal(`
+        <p class="gm-kicker">ᛟ Nyílt nap — a kaland vége</p>
+        <h2>A Mohos barlang tiszta!</h2>
+        <p class="gm-lore">Huginn és Muninn már viszik a hírt a Völgy minden zugába. A nyílt napi kalandod itt
+           véget ér — a további négy barlang, a fészkek, a Gyakorlótér és Níðhöggr a teljes játékban vár.</p>
+        <div class="gm-facts"><span>Csaták: <b>${st.battles}</b></span><span>Győzelmek: <b>${st.wins}</b></span><span>Sárkányaid: <b>${state.dragons.size}</b></span></div>
+        <div class="gm-actions">
+          <a class="btn btn-primary" href="nyiltnap.php" autofocus>Vissza a túrához →</a>
+          <button class="btn" type="button" data-act="stay">Még körülnézek</button>
+        </div>`);
+      card.querySelector('[data-act="stay"]').onclick = () => hud.closeModal();
+      hud.onModalClose = resolve;
+    });
+  }
+
   async #finale() {
     try {
       await playEnding(this.g);
