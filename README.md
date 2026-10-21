@@ -445,7 +445,7 @@ A `jatek.php` érintetlenül a Godot-modul bejárata maradt.
 ## Nyílt nap — 16 bemutató fiók, vezetett túra (`nyiltnap.php`)
 
 Rendezvényre készült, korlátozott mód. A látogató a **nyiltnap.php** oldalon
-egyetlen rövid kóddal lép be (pl. `THOR4`, jelszó nincs), és öt állomáson
+egyetlen ideiglenes, háromjegyű kóddal lép be (pl. `482`, jelszó nincs), és öt állomáson
 megy végig, kb. negyedóra alatt:
 
 1. **A jóslat** (`quiz.php`) — a válaszaiból születik az első sárkánya
@@ -460,15 +460,24 @@ visz). A menü helyett a túra állomásai látszanak, alatta egy sáv mutatja, 
 tart, és mi jön ezután.
 
 **Vezérlő (`nyiltnap_admin.php`, csak adminnak):** „Fiókok létrehozása" — 16 fiók
-(ODIN, THOR, LOKI… egy-egy véletlen számjeggyel; a kódok csak az adatbázisban és
-a kártyákon vannak). Élő haladás 5 mp-enként (ki hol tart, ki játszik épp),
-**nullázás** fiókonként vagy egyszerre, ki/bekapcsolás, nyomtatható kódkártyák.
+(Odin, Thor, Loki…), mindegyik ideiglenes háromjegyű kóddal; „Új kódok" — mind
+cserél, a régi kártyák azonnal érvénytelenek (aki bent van, bent marad). Élő
+haladás 5 mp-enként (ki hol tart, ki játszik épp), **továbbküldés** — a látogató
+oldala pár másodpercen belül a választott állomásra ugrik (pl. ha a túra
+kezdőlapján ragadt), **kihagyás** — a mostani állomás késznek jelölve, a látogató
+megy a következőre — mindkettő **mindenkinek egyszerre** is (csak akik épp bent
+vannak), **nullázás** fiókonként vagy egyszerre, ki/bekapcsolás,
+kódkártyák: „Nyomtatás" (azonnal a nyomtatási ablak) és „PDF" (A4, 16 vágható
+kártya, letöltésre — külső könyvtár nélkül, `inc/openday_pdf.php`).
 A nullázás nem lépteti ki a látogatót: a fiók „korszaka" lép, a nyitott oldala
 pár másodpercen belül magától a túra elejére ugrik, a játék régi mentését pedig
 a szerver elutasítja. A nap végén: „Mind ki" — a kódok onnantól nem működnek.
 
-Az AI-saga OpenAI-kulccsal fut (`OPENAI_API_KEY` vagy `config.local.php`); kulcs
-nélkül a beépített mesélő ír — a vezérlő tetején látszik, melyik működik.
+Az AI-saga OpenAI-kulccsal fut. A kulcs a **`config.secret.php`**-ba kerül (minta:
+`config.secret.example.php`) — ez a `.gitignore`-ban van, a szerverre kézzel kell
+feltölteni a `config.php` mellé, így a nyilvános repóba sosem jut kulcs (onnan az
+OpenAI azonnal letiltaná). Az `OPENAI_API_KEY` környezeti változó is működik.
+Kulcs nélkül a beépített mesélő ír — a vezérlő tetején látszik, melyik működik.
 
 Fájlok: `inc/openday.php` (logika, őr), `nyiltnap.php`, `nyiltnap_admin.php`,
 `script/openday.js`, `script/openday_admin.js`, `style/openday.css`,

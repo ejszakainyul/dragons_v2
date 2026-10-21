@@ -38,16 +38,22 @@ $config = [
     ],
 ];
 
-// Helyi felülírások
-if (is_file(__DIR__ . '/config.local.php')) {
-    $local = require __DIR__ . '/config.local.php';
-    if (is_array($local)) {
-        foreach ($local as $section => $values) {
-            if (is_array($values) && isset($config[$section]) && is_array($config[$section])) {
-                $config[$section] = array_merge($config[$section], $values);
-            } else {
-                $config[$section] = $values;
-            }
+// Helyi felülírások: config.local.php, majd a titkos kulcsok (config.secret.php —
+// ez nincs a verziókövetésben, a szerverre kézzel kerül fel, így a nyilvános
+// repóba sosem jut API-kulcs)
+foreach (['config.local.php', 'config.secret.php'] as $overrideFile) {
+    if (!is_file(__DIR__ . '/' . $overrideFile)) {
+        continue;
+    }
+    $local = require __DIR__ . '/' . $overrideFile;
+    if (!is_array($local)) {
+        continue;
+    }
+    foreach ($local as $section => $values) {
+        if (is_array($values) && isset($config[$section]) && is_array($config[$section])) {
+            $config[$section] = array_merge($config[$section], $values);
+        } else {
+            $config[$section] = $values;
         }
     }
 }

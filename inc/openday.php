@@ -21,9 +21,10 @@ const OPENDAY_STEPS = [
 ];
 
 /**
- * A 16 fiók: a kód eleje => megjelenő név (északi istenek). A létrehozáskor
- * a kód kap egy véletlen számjegyet (pl. THOR4): így is pár karakter, de a
- * nyilvános forrásból nem tudható — csak az adatbázisban és a kártyákon van.
+ * A 16 fiók: belső azonosító => megjelenő név (északi istenek). A belépőkód
+ * ideiglenes, háromjegyű véletlen szám (pl. 482): telefonon is gyorsan
+ * beírható, a vezérlőből bármikor újragenerálható („Új kódok"), és csak az
+ * adatbázisban meg a kártyákon szerepel.
  */
 const OPENDAY_ACCOUNTS = [
     'ODIN' => 'Odin',  'THOR' => 'Thor',  'LOKI' => 'Loki',  'FREY' => 'Freyr',
@@ -31,6 +32,9 @@ const OPENDAY_ACCOUNTS = [
     'ULL'  => 'Ullr',  'IDUN' => 'Iðunn', 'VALI' => 'Váli',  'SAGA' => 'Sága',
     'RAN'  => 'Rán',   'EIR'  => 'Eir',   'BRAG' => 'Bragi', 'NJOR' => 'Njörðr',
 ];
+
+/** Ennyi másodpercen belül jelzett oldal = a látogató épp bent van (a nyitott oldal 5 mp-enként jelez). */
+const OPENDAY_ONLINE = 60;
 
 /** A nyílt napi táblák (idempotens — az első használatkor magától létrejön). */
 function openday_install(): void
@@ -52,6 +56,12 @@ function openday_install(): void
              REFERENCES `sarkanyok_users` (`id`) ON DELETE CASCADE
          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci"
     );
+    // A vezérlő „továbbküldése": melyik állomásra ugorjon a látogató oldala
+    $has = db()->query(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sarkanyok_nyiltnap' AND COLUMN_NAME = 'kuldes'"
+    )->fetch_row()[0];
+    if (!(int)$has) db()->query("ALTER TABLE `sarkanyok_nyiltnap` ADD COLUMN `kuldes` VARCHAR(16) NULL DEFAULT NULL");
 }
 
 /** Nyílt napi fiókkal van-e belépve a látogató. */
@@ -90,8 +100,14 @@ function openday_next(array $done): ?string
 /** Egy lépés teljesítése (csak nyílt napi fióknál; többször hívható). */
 function openday_mark(string $step): void
 {
-    if (!is_demo() || !isset(OPENDAY_STEPS[$step])) return;
-    $uid  = current_user_id();
+    if (!is_demo()) return;
+    openday_mark_uid(current_user_id(), $step);
+}
+
+/** Egy lépés teljesítése egy adott fióknál (a vezérlő „kihagyás"-a is ezt hívja). */
+function openday_mark_uid(int $uid, string $step): void
+{
+    if (!isset(OPENDAY_STEPS[$step])) return;
     $done = openday_done(openday_row($uid, true));
     if (!in_array($step, $done, true)) $done[] = $step;
     $list = implode(',', array_values(array_intersect(array_keys(OPENDAY_STEPS), $done)));
@@ -117,7 +133,7 @@ function openday_touch(): void
 function openday_login(string $code): ?array
 {
     openday_install();
-    $code = strtoupper(preg_replace('/[^a-z0-9]/i', '', $code));
+    $code = strtoupper(preg_replace('/[^a-z0-9]/i', '', $code));      // „4 8 2", „482 " is jó
     if ($code === '') return null;
     $stmt = db()->prepare(
         'SELECT u.id, u.name, u.email, u.is_admin, n.aktiv, n.korszak
@@ -134,6 +150,12 @@ function openday_login(string $code): ?array
     $_SESSION['demo'] = 1;
     $_SESSION['demo_epoch'] = (int)$row['korszak'];
     openday_touch();
+    // egy korábbi (más látogatónak szánt) függő továbbküldés ne dobja el rögtön
+    $stmt = db()->prepare('UPDATE sarkanyok_nyiltnap SET kuldes = NULL WHERE user_id = ?');
+    $uid  = (int)$row['id'];
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $stmt->close();
     return $row;
 }
 
@@ -182,7 +204,7 @@ function openday_reset(int $uid): void
         $q('DELETE FROM sarkanyok_tojasok WHERE user_id = ?');
         $q('DELETE FROM sarkanyok_friends WHERE user_id = ? OR friend_id = ' . (int)$uid);
         $q('UPDATE sarkanyok_users SET quiz_taken = 0 WHERE id = ?');
-        $q("UPDATE sarkanyok_nyiltnap SET lepesek = '', korszak = korszak + 1, utoljara = NULL WHERE user_id = ?");
+        $q("UPDATE sarkanyok_nyiltnap SET lepesek = '', korszak = korszak + 1, utoljara = NULL, kuldes = NULL WHERE user_id = ?");
         $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -197,14 +219,16 @@ function openday_create_accounts(): int
     $conn = db();
     $made = 0;
     foreach (OPENDAY_ACCOUNTS as $prefix => $name) {
-        $pattern = '^' . $prefix . '[0-9]$';
-        $stmt = $conn->prepare('SELECT user_id FROM sarkanyok_nyiltnap WHERE kod REGEXP ?');
+        $pattern = '^' . strtolower($prefix) . '[0-9]*@nyiltnap\\.local$';
+        $stmt = $conn->prepare(
+            'SELECT n.user_id FROM sarkanyok_nyiltnap n JOIN sarkanyok_users u ON u.id = n.user_id WHERE u.email REGEXP ?'
+        );
         $stmt->bind_param('s', $pattern);
         $stmt->execute();
         $exists = $stmt->get_result()->fetch_row();
         $stmt->close();
         if ($exists) continue;
-        $code = $prefix . random_int(2, 9);
+        $code = openday_free_code();
 
         // egyedi név és email (ha már van ilyen nevű valódi játékos, kap egy jelzőt)
         $email = strtolower($prefix) . '@nyiltnap.local';
@@ -234,6 +258,57 @@ function openday_create_accounts(): int
     return $made;
 }
 
+/** Egy még nem használt háromjegyű kód. */
+function openday_free_code(): string
+{
+    $used = array_column(db()->query('SELECT kod FROM sarkanyok_nyiltnap')->fetch_all(), 0);
+    do { $code = (string)random_int(100, 999); } while (in_array($code, $used, true));
+    return $code;
+}
+
+/** Új ideiglenes kód minden fióknak (a régiek azonnal érvénytelenek; aki bent van, bent marad). */
+function openday_new_codes(): void
+{
+    $conn = db();
+    $ids  = array_map('intval', array_column($conn->query('SELECT user_id FROM sarkanyok_nyiltnap')->fetch_all(), 0));
+    $conn->query("UPDATE sarkanyok_nyiltnap SET kod = CONCAT('#', user_id)");     // ütközés nélküli átmenet
+    $pool = range(100, 999);
+    shuffle($pool);
+    foreach ($ids as $i => $uid) {
+        $code = (string)$pool[$i];
+        $stmt = $conn->prepare('UPDATE sarkanyok_nyiltnap SET kod = ? WHERE user_id = ?');
+        $stmt->bind_param('si', $code, $uid);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+/**
+ * Továbbküldés a vezérlőből: a látogató nyitott oldala a következő
+ * jelzésnél (≤ 5 mp) erre az állomásra ugrik. $target: lépéskulcs vagy 'hub'.
+ */
+function openday_send(int $uid, string $target): void
+{
+    if ($target !== 'hub' && !isset(OPENDAY_STEPS[$target])) throw new RuntimeException('Ismeretlen állomás.');
+    $stmt = db()->prepare('UPDATE sarkanyok_nyiltnap SET kuldes = ? WHERE user_id = ?');
+    $stmt->bind_param('si', $target, $uid);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/** A függő továbbküldés átvétele (a látogató oldala kérdezi le): az oldal címe vagy null. */
+function openday_take_send(int $uid): ?string
+{
+    $row = openday_row($uid, true);
+    $t   = $row['kuldes'] ?? null;
+    if ($t === null || $t === '') return null;
+    $stmt = db()->prepare('UPDATE sarkanyok_nyiltnap SET kuldes = NULL WHERE user_id = ?');
+    $stmt->bind_param('i', $uid);
+    $stmt->execute();
+    $stmt->close();
+    return $t === 'hub' ? 'nyiltnap.php' : (OPENDAY_STEPS[$t][1] ?? null);
+}
+
 /** A vezérlő listája: minden fiók a haladásával. */
 function openday_list(): array
 {
@@ -242,11 +317,9 @@ function openday_list(): array
         "SELECT n.user_id, n.kod, n.aktiv, n.korszak, n.lepesek, n.utoljara, u.name,
                 (SELECT COUNT(*) FROM sarkanyok d WHERE d.user_id = n.user_id) AS sarkanyok,
                 (SELECT COUNT(*) FROM sarkanyok_story s WHERE s.user_id = n.user_id) AS sagak
-           FROM sarkanyok_nyiltnap n JOIN sarkanyok_users u ON u.id = n.user_id"
+           FROM sarkanyok_nyiltnap n JOIN sarkanyok_users u ON u.id = n.user_id
+          ORDER BY n.user_id"
     )->fetch_all(MYSQLI_ASSOC);
-    $order = array_flip(array_keys(OPENDAY_ACCOUNTS));
-    $rank  = static fn($kod) => $order[preg_replace('/\d+$/', '', (string)$kod)] ?? 99;
-    usort($rows, static fn($a, $b) => $rank($a['kod']) <=> $rank($b['kod']));
     foreach ($rows as &$r) {
         $r['done'] = openday_done($r);
         $r['next'] = openday_next($r['done']);

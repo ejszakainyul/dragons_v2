@@ -2,7 +2,7 @@
 /**
  * Nyílt nap — a látogatók bejárata és a túra kezdőlapja.
  *
- *   Belépve nem:   egyetlen mező, a kártyán lévő rövid kód (pl. THOR)
+ *   Belépve nem:   egyetlen mező, a kártyán lévő háromjegyű kód (pl. 482)
  *   Belépve:       a túra öt állomása, a látogató sárkányai és sagája
  *   ?api=ping      JSON a nyitott oldalaknak (nullázták-e közben a fiókot)
  *
@@ -15,9 +15,12 @@ if (($_GET['api'] ?? '') === 'ping') {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     if (!is_demo()) exit(json_encode(['demo' => false]));
-    $row  = openday_row(current_user_id(), true);
+    $uid  = current_user_id();
+    openday_touch();                              // a vezérlő így látja, ki van épp bent
+    $go   = openday_take_send($uid);              // a vezérlő továbbküldte (≤ 5 mp)
+    $row  = openday_row($uid, true);
     $done = openday_done($row);
-    exit(json_encode(['demo' => true, 'epoch' => (int)($row['korszak'] ?? 0), 'done' => $done, 'next' => openday_next($done)]));
+    exit(json_encode(['demo' => true, 'epoch' => (int)($row['korszak'] ?? 0), 'done' => $done, 'next' => openday_next($done), 'go' => $go]));
 }
 
 /* --- Belépés kóddal ------------------------------------------------------- */
@@ -79,8 +82,8 @@ require __DIR__ . '/header.php';
     <?php endif; ?>
 
     <label class="od-code-field">
-      <input type="text" name="kod" maxlength="8" required autofocus autocapitalize="characters"
-             spellcheck="false" placeholder="THOR4" aria-label="Belépőkód">
+      <input type="text" name="kod" maxlength="8" required autofocus inputmode="numeric" autocomplete="off"
+             spellcheck="false" placeholder="482" aria-label="Belépőkód">
     </label>
     <button class="btn btn-primary od-go" type="submit">Belépés ᛞ</button>
 

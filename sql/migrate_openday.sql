@@ -10,13 +10,18 @@ USE `sarkanyok`;
 
 CREATE TABLE IF NOT EXISTS `sarkanyok_nyiltnap` (
   `user_id`  INT(11)     NOT NULL,
-  `kod`      VARCHAR(8)  NOT NULL,                  -- belépőkód, pl. THOR4
+  `kod`      VARCHAR(8)  NOT NULL,                  -- ideiglenes belépőkód, pl. 482
   `aktiv`    TINYINT(1)  NOT NULL DEFAULT 1,        -- 0: a kód nem enged be
   `korszak`  INT         NOT NULL DEFAULT 1,        -- nullázáskor lép: a régi oldalak visszaugranak
   `lepesek`  VARCHAR(80) NOT NULL DEFAULT '',       -- teljesített állomások, vesszővel
   `utoljara` DATETIME    NULL DEFAULT NULL,         -- utolsó aktivitás (a vezérlő „épp játszik" jelzője)
+  `kuldes`   VARCHAR(16) NULL DEFAULT NULL,         -- a vezérlő továbbküldése (állomás kulcsa vagy 'hub')
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `uq_nyiltnap_kod` (`kod`),
   CONSTRAINT `fk_nyiltnap_user` FOREIGN KEY (`user_id`)
     REFERENCES `sarkanyok_users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
+
+-- Régebbi telepítésre (a tábla már megvolt): a továbbküldés oszlopa.
+-- (A vezérlő megnyitásakor ez is magától megtörténik.)
+-- ALTER TABLE `sarkanyok_nyiltnap` ADD COLUMN `kuldes` VARCHAR(16) NULL DEFAULT NULL;
