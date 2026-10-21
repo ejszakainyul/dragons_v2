@@ -86,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $myPick['owner'] = $_SESSION['name'] ?? 'Te';
         $result = battle_simulate($myPick, $foePick);
         battle_record($myPick, $foePick, $result);
+        openday_mark('arena');
     }
 }
 

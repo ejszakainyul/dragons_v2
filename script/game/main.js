@@ -120,7 +120,7 @@ async function starter(g) {
 async function boot() {
   if (!window.Phaser) return fatal('A játékmotor nem töltődött be.');
 
-  const api = new Api(CFG.api || 'kaland_api.php', CFG.csrf || '');
+  const api = new Api(CFG.api || 'kaland_api.php', CFG.csrf || '', CFG.demo ? { epoch: CFG.epoch } : {});
   setLoading('A völgy ébredezik…', 12);
 
   let server;
@@ -136,7 +136,11 @@ async function boot() {
   const hud = new Hud(shell, state, sfx);
   const music = new GameMusic(sfx, state);
   hud.attachMusic(music);
-  const g = { api, state, hud, sfx, music };
+  // Nyílt nap: egy barlang, vezetett út, több gyógyfű az első próbához
+  const demo = !!CFG.demo;
+  if (demo && !server.save) state.save.herbs = 5;
+  hud.demo = demo;
+  const g = { api, state, hud, sfx, music, demo };
   window.__kaland = g;               // fejlesztői fogantyú: a konzolból elérhető állapot
 
   // A hang csak felhasználói gesztus után indulhat

@@ -78,7 +78,10 @@ require __DIR__ . '/header.php';
       <h1>Adatkezelő</h1>
       <p class="muted mb-0">Bejelentkezve: <strong><?= e($_SESSION['email'] ?? '') ?></strong> · csak olvasás</p>
     </div>
-    <span class="badge badge-ember">admin</span>
+    <span class="flex-center" style="gap:10px">
+      <a class="btn btn-sm" href="nyiltnap_admin.php">ᛟ Nyílt nap vezérlő</a>
+      <span class="badge badge-ember">admin</span>
+    </span>
   </header>
 
   <nav class="admin-tabs">

@@ -144,7 +144,12 @@ export class OverworldScene extends Phaser.Scene {
     this.places = new Places(this.g, this.#placesHost());
     // Kóborló vad sárkányok: időnként újak bukkannak fel (legfeljebb öt)
     this.time.addEvent({ delay: 5000, loop: true, startAt: 3000, callback: () => { if (this.ready) this.#spawnRoamers(); } });
-    const openBook = () => { if (!hud.modalOpen) { this.g.sfx.click(); this.g.story.openBook(); } };
+    const openBook = () => {
+      if (hud.modalOpen) return;
+      this.g.sfx.click();
+      if (this.g.demo && this.g.story.demoDone) this.g.story.demoEnd();
+      else this.g.story.openBook();
+    };
     hud.el.book?.addEventListener('click', openBook);
     hud.menuBook = () => this.g.story.openBook();
     hud.el.quest?.addEventListener('click', openBook);
@@ -493,6 +498,7 @@ export class OverworldScene extends Phaser.Scene {
 
   async #spawnRoamers() {
     if (!this.g.story || this.g.story.s.q < 1) return;        // a prológusban még nem bántja senki
+    if (this.g.demo) return;                                   // nyílt napon csak a barlang számít
     this.roamers ||= [];
     const spots = this.world.roamSpots || [];
     while (this.roamers.length < 5 && spots.length) {
@@ -1244,7 +1250,7 @@ export class OverworldScene extends Phaser.Scene {
     const cleared = !!state.save.cleared[p.tier];
     const maxCleared = Math.max(0, ...Object.keys(state.save.cleared).filter((k) => state.save.cleared[k]).map(Number));
     // Níðhöggr barlangja bármikor nyitva: aki bemegy, egyből a bosszal néz szembe
-    const locked = p.tier !== 5 && p.tier > maxCleared + 1;
+    const locked = this.g.demo ? p.tier !== 1 : p.tier !== 5 && p.tier > maxCleared + 1;
     const partyUp = state.party.filter((d) => state.hpOf(d) > 0);
     const rec = p.tier === 5 ? 20 : 1 + (p.tier - 1) * 4;     // Níðhöggr ellen több kell (szimuláció: 17. szinten ~22% esély)
     const lore = {
@@ -1264,7 +1270,7 @@ export class OverworldScene extends Phaser.Scene {
         <span>${p.tier === 5 ? 'Ellenfél: <b>Níðhöggr</b>' : `Hullámok: <b>${cave.waves.length}</b>`}</span>
         <span>Állapot: <b>${cleared ? 'bejárva ✓' : 'felderítetlen'}</b></span>
       </div>
-      ${locked ? `<p class="gm-warn">Ez a barlang még túl veszélyes. Előbb járd be a(z) ${ROMAN[maxCleared + 1]}. fokút.</p>` : ''}
+      ${locked ? `<p class="gm-warn">${this.g.demo ? 'A nyílt napon csak a Mohos barlang (I.) nyitott — a többi a teljes játékban vár.' : `Ez a barlang még túl veszélyes. Előbb járd be a(z) ${ROMAN[maxCleared + 1]}. fokút.`}</p>` : ''}
       ${!partyUp.length ? '<p class="gm-warn">A csapatod kimerült. Pihenj a hosszúházban!</p>' : ''}
       <div class="gm-actions">
         <button class="btn btn-primary" data-act="go" type="button" ${locked || !partyUp.length ? 'disabled' : ''}>Belépés a barlangba</button>

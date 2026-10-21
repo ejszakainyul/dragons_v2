@@ -1,0 +1,194 @@
+/* =====================================================================
+   Nyílt nap — belépőkapu, túra, túrasáv, vezérlő, kódkártyák
+   ===================================================================== */
+.od-kicker { margin: 0 0 6px; font: 700 .78rem 'Cinzel', serif; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-2); }
+.od-kicker b { color: var(--text); letter-spacing: .1em; }
+.od-lead { color: var(--muted); font-size: 1.05rem; max-width: 60ch; }
+.od-ai {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; vertical-align: middle;
+  font: 800 .7rem Inter, sans-serif; letter-spacing: .08em; color: #06131a;
+  background: linear-gradient(90deg, #7ce7ff, #b18cff); box-shadow: 0 0 12px rgba(124, 231, 255, .45);
+}
+
+/* --- Belépőkapu ----------------------------------------------------------- */
+.od-gate { min-height: calc(100vh - var(--nav-h) - 160px); display: grid; place-items: center; padding: 40px 16px; }
+.od-gate-card {
+  width: min(520px, 100%); text-align: center; padding: 38px 34px 30px; border-radius: 22px;
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgba(255, 196, 107, .12), transparent 60%),
+    linear-gradient(180deg, rgba(30, 38, 62, .92), rgba(9, 13, 26, .96));
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, .18), inset 0 0 0 2px rgba(201, 154, 78, .25), 0 30px 80px rgba(0, 0, 0, .6);
+}
+.od-gate-card h1 { font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.4rem); margin: 0 0 6px; }
+.od-gate-card .od-lead { margin: 0 auto 20px; }
+.od-code-field input {
+  width: 100%; padding: 18px 16px; border-radius: 14px; text-align: center;
+  font: 900 clamp(2rem, 8vw, 3rem)/1 'Cinzel', serif; letter-spacing: .35em; text-indent: .35em; text-transform: uppercase;
+  color: #ffe7c2; background: #05070f; border: 2px solid rgba(201, 154, 78, .5);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, .7), 0 0 0 4px rgba(255, 138, 61, 0);
+  transition: box-shadow .2s var(--ease), border-color .2s var(--ease);
+}
+.od-code-field input::placeholder { color: rgba(255, 231, 194, .16); }
+.od-code-field input:focus { outline: none; border-color: var(--accent-2); box-shadow: inset 0 3px 8px rgba(0, 0, 0, .7), 0 0 0 4px rgba(255, 138, 61, .25); }
+.od-go { width: 100%; margin-top: 14px; font-size: 1.1rem; padding: 15px; }
+.od-preview { list-style: none; margin: 26px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.od-preview li { display: grid; justify-items: center; gap: 3px; font-size: .74rem; color: var(--muted); }
+.od-preview i { font: normal 1.2rem var(--font-rune); color: var(--accent-2); text-shadow: 0 0 10px rgba(255, 160, 80, .45); }
+.od-preview span { color: var(--text); font-weight: 600; }
+.od-admin-link { margin: 18px 0 0; font-size: .85rem; }
+
+/* --- Túra kezdőlap ---------------------------------------------------------- */
+.od-hub { padding-bottom: 40px; }
+.od-hero { display: flex; gap: 26px; align-items: center; justify-content: space-between; margin: 10px 0 28px; }
+.od-hero h1 { font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.6rem); margin: 0 0 8px; }
+.od-ring {
+  --p: 0; flex: none; width: 128px; height: 128px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+  background:
+    radial-gradient(closest-side, #0b1020 78%, transparent 79%),
+    conic-gradient(#ffb25c calc(var(--p) * 360deg), rgba(255, 255, 255, .08) 0);
+  box-shadow: 0 0 30px rgba(255, 140, 60, calc(.15 + var(--p) * .3));
+}
+.od-ring b { font: 900 2.4rem/1 'Cinzel', serif; color: #ffe7c2; }
+.od-ring span { font-size: .8rem; color: var(--muted); }
+
+.od-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.od-step {
+  display: grid; grid-template-columns: 58px 1fr auto; gap: 18px; align-items: center;
+  padding: 16px 20px 16px 16px; border-radius: 16px;
+  background: linear-gradient(180deg, rgba(30, 38, 62, .75), rgba(9, 13, 26, .85));
+  border: 1px solid var(--line);
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.od-step h2 { margin: 0 0 2px; font-size: 1.25rem; }
+.od-step p { margin: 0; color: var(--muted); }
+.od-step-n { font: 700 .72rem 'Cinzel', serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px !important; }
+.od-step-rune {
+  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  font: normal 1.6rem var(--font-rune); color: var(--muted);
+  background: radial-gradient(circle at 40% 32%, #2b3554, #0b1020); box-shadow: inset 0 0 0 2px rgba(138, 150, 184, .25);
+}
+.od-step.is-next {
+  border-color: rgba(255, 178, 92, .6);
+  box-shadow: 0 0 0 1px rgba(255, 178, 92, .25), 0 14px 40px rgba(255, 120, 40, .18);
+  transform: scale(1.01);
+}
+.od-step.is-next .od-step-rune { color: #1b0d03; background: radial-gradient(circle at 40% 32%, #fff3c8, #ff9a3d 60%, #b8501c); box-shadow: 0 0 18px rgba(255, 160, 80, .55); animation: odPulse 1.8s ease-in-out infinite; }
+.od-step.is-done { opacity: .82; }
+.od-step.is-done .od-step-rune { color: #062018; font-family: Inter, sans-serif; font-weight: 900; background: radial-gradient(circle at 40% 32%, #d8fff3, #2dd4a7 60%, #128a68); }
+.od-step.is-later { opacity: .55; }
+.od-step-later { font-size: .82rem; color: var(--muted); }
+@keyframes odPulse { 50% { box-shadow: 0 0 30px rgba(255, 160, 80, .85); } }
+
+.od-section { margin-top: 38px; }
+.od-h2 { font-family: var(--font-display); font-size: 1.5rem; margin: 0 0 14px; display: flex; gap: 10px; align-items: center; }
+.od-dragons { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.od-dragon { margin: 0; padding: 14px; border-radius: 16px; text-align: center; background: linear-gradient(180deg, rgba(30, 38, 62, .6), rgba(9, 13, 26, .8)); border: 1px solid var(--line); }
+.od-dragon .dragon-art { width: 100%; max-width: 170px; margin: 0 auto; }
+.od-dragon figcaption b { display: block; font-family: 'Cinzel', serif; }
+.od-dragon figcaption small { color: var(--muted); }
+.od-story { line-height: 1.7; }
+.od-thanks { margin-top: 34px; text-align: center; font: 700 1.05rem 'Cinzel', serif; color: var(--accent-2); }
+
+/* --- Túrasáv (minden túraoldal tetején) ------------------------------------- */
+.od-bar {
+  position: sticky; top: var(--nav-h); z-index: 40;
+  background: linear-gradient(180deg, rgba(14, 18, 32, .96), rgba(8, 11, 22, .94));
+  border-bottom: 1px solid rgba(201, 154, 78, .35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+.od-bar-in { width: min(1180px, 94vw); margin: 0 auto; display: flex; gap: 14px; align-items: center; padding: 8px 0; }
+.od-bar-home { flex: none; font: 700 .9rem 'Cinzel', serif; color: var(--accent-2); text-decoration: none; }
+.od-bar-steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.od-bar-steps li a {
+  display: inline-flex; gap: 6px; align-items: center; padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+  font-size: .8rem; color: var(--muted); text-decoration: none; border: 1px solid transparent;
+}
+.od-bar-steps i { font: normal .95rem var(--font-rune); }
+.od-bar-steps li.is-done a { color: #9ff1d8; }
+.od-bar-steps li.is-done i { font-size: 0; }                       /* a rúna helyén pipa */
+.od-bar-steps li.is-done i::before { content: '✓'; font: 900 .85rem Inter, sans-serif; }
+.od-bar-steps li.is-next a { color: #ffe7c2; border-color: rgba(255, 178, 92, .5); }
+.od-bar-steps li.is-here a { background: rgba(255, 178, 92, .14); color: #fff; border-color: rgba(255, 178, 92, .7); }
+.od-bar-next { flex: none; }
+.od-bar-next.is-pop { animation: odPop .6s var(--ease); }
+@keyframes odPop { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.08); } }
+@media (max-width: 720px) {
+  .od-bar-steps span { display: none; }
+  .od-bar-home span { display: none; }
+  .od-hero { flex-direction: column-reverse; align-items: flex-start; }
+  .od-ring { width: 96px; height: 96px; }
+  .od-step { grid-template-columns: 44px 1fr; }
+  .od-step .btn, .od-step-later { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
+  .od-step-rune { width: 44px; height: 44px; font-size: 1.2rem; }
+  .od-preview { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* --- Vezérlő ------------------------------------------------------------------ */
+.od-admin { max-width: 1320px; padding-bottom: 40px; }
+.od-admin-head { display: flex; gap: 20px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+.od-admin-head h1 { margin: 0 0 4px; }
+.od-admin-head .muted { max-width: 70ch; margin: 0; }
+.od-admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.od-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.od-stats div { padding: 12px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
+.od-stats b { font: 900 1.8rem/1 'Cinzel', serif; }
+.od-stats span { color: var(--muted); font-size: .85rem; }
+.od-stats .is-live b { color: #7ce7ff; }
+.od-stats .is-done b { color: #2dd4a7; }
+.od-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.od-acc {
+  padding: 14px; border-radius: 16px; display: grid; gap: 10px;
+  background: linear-gradient(180deg, rgba(30, 38, 62, .75), rgba(9, 13, 26, .9)); border: 1px solid var(--line);
+}
+.od-acc.is-live { border-color: rgba(124, 231, 255, .55); box-shadow: 0 0 0 1px rgba(124, 231, 255, .2), 0 0 22px rgba(124, 231, 255, .12); }
+.od-acc.is-finished { border-color: rgba(45, 212, 167, .5); }
+.od-acc.is-off { opacity: .45; filter: grayscale(.6); }
+.od-acc header { display: flex; gap: 12px; align-items: center; }
+.od-acc-code { font: 900 1.35rem 'Cinzel', serif; letter-spacing: .14em; color: #ffe7c2; padding: 4px 10px; border-radius: 10px; background: #05070f; border: 1px solid rgba(201, 154, 78, .45); }
+.od-acc-name { flex: 1; min-width: 0; font-weight: 700; }
+.od-acc-name small { display: block; font-weight: 500; font-size: .76rem; color: var(--muted); }
+.od-acc.is-live .od-acc-name small { color: #7ce7ff; }
+.od-acc-pct {
+  --p: 0; flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font: 700 .72rem Inter, sans-serif;
+  background: radial-gradient(closest-side, #0b1020 74%, transparent 75%), conic-gradient(#2dd4a7 calc(var(--p) * 360deg), rgba(255, 255, 255, .08) 0);
+}
+.od-acc-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.od-acc-steps li { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border-radius: 10px; background: rgba(255, 255, 255, .03); color: var(--muted); font-size: .66rem; text-align: center; }
+.od-acc-steps i { font: normal 1rem var(--font-rune); }
+.od-acc-steps li.is-done { background: rgba(45, 212, 167, .14); color: #9ff1d8; }
+.od-acc-steps li.is-done i { font-family: Inter, sans-serif; font-weight: 900; }
+.od-acc-steps li.is-next { background: rgba(255, 178, 92, .14); color: #ffe7c2; box-shadow: inset 0 0 0 1px rgba(255, 178, 92, .5); }
+.od-acc-meta { margin: 0; font-size: .82rem; color: var(--muted); }
+.od-acc-meta b { color: var(--text); }
+.od-acc footer { display: flex; gap: 8px; justify-content: flex-end; }
+.od-empty { text-align: center; padding: 40px; grid-column: 1 / -1; }
+.od-toast {
+  position: fixed; left: 50%; bottom: 24px; translate: -50% 20px; z-index: 50; opacity: 0; pointer-events: none;
+  padding: 10px 18px; border-radius: 12px; background: #0b1020; border: 1px solid rgba(45, 212, 167, .55); box-shadow: 0 14px 40px rgba(0, 0, 0, .6);
+  transition: opacity .25s var(--ease), translate .25s var(--ease);
+}
+.od-toast.is-in { opacity: 1; translate: -50% 0; }
+.od-toast.is-bad { border-color: rgba(255, 93, 108, .7); }
+@media (max-width: 720px) { .od-stats { grid-template-columns: repeat(2, 1fr); } }
+
+
+.od-ai-status { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: .9rem; color: #ffd9a8;
+  background: rgba(255, 178, 92, .08); border: 1px solid rgba(255, 178, 92, .4); }
+.od-ai-status.is-on { color: #c8f6ff; background: rgba(124, 231, 255, .07); border-color: rgba(124, 231, 255, .4); }
+.od-ai-status code { font-size: .82rem; }
+
+/* --- Nyomtatható kódkártyák ------------------------------------------------- */
+.od-print { margin: 0; padding: 10mm; background: #fff; color: #111; font-family: Inter, sans-serif; }
+.od-print-hint { margin: 0 0 6mm; color: #666; font-size: 12px; }
+.od-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+.od-pcard {
+  height: 62mm; padding: 5mm; box-sizing: border-box; display: grid; justify-items: center; align-content: center; gap: 1.5mm; text-align: center;
+  border: 1px dashed #bbb; break-inside: avoid;
+}
+.od-pcard img { width: 15mm; height: 15mm; }
+.od-pk { margin: 0; font: 700 7.5px 'Cinzel', serif; letter-spacing: .12em; text-transform: uppercase; color: #7a4a1a; }
+.od-pcode { margin: 0; font: 900 30px/1 'Cinzel', serif; letter-spacing: .2em; text-indent: .2em; color: #111; }
+.od-pname { margin: 0; font-size: 10px; color: #555; }
+.od-purl { margin: 0; font-size: 8.5px; color: #333; line-height: 1.35; word-break: break-all; }
+@media print { .od-print-hint { display: none; } .od-print { padding: 6mm; } }

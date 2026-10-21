@@ -24,6 +24,15 @@ $story  = '';
 $source = '';
 $form   = ['name' => '', 'provenance' => '', 'weapon' => '', 'dragon' => ''];
 
+// Nyílt napon a sárkány nevét előre kitöltjük (az elsőből, amit a jóslat adott)
+if (is_demo() && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $stmt = $conn->prepare('SELECT nev FROM sarkanyok WHERE user_id = ? ORDER BY id LIMIT 1');
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $form['dragon'] = (string)($stmt->get_result()->fetch_column() ?: '');
+    $stmt->close();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
 
@@ -52,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         $used++;
+        openday_mark('story');
     }
 }
 
@@ -110,7 +120,7 @@ require __DIR__ . '/header.php';
       <h2>Elfogytak a pergamenjeid</h2>
       <p class="muted">Mind a <?= $limit ?> történetedet megírtad. A profilodban bármelyiket elolvashatod
         — és ha helyet szabadítasz fel, újat írhatsz.</p>
-      <a class="btn btn-primary" href="user.php#stories">Történeteim</a>
+      <a class="btn btn-primary" href="<?= is_demo() ? 'nyiltnap.php' : 'user.php#stories' ?>"><?= is_demo() ? 'Vissza a túrához' : 'Történeteim' ?></a>
     </div>
   <?php endif; ?>
 
@@ -135,7 +145,11 @@ require __DIR__ . '/header.php';
       <div class="story-body"><?= nl2br(e($story)) ?></div>
 
       <div class="flex-center mt-2">
-        <a class="btn" href="user.php#stories">Elmentve a profilodba</a>
+        <?php if (is_demo()): ?>
+          <a class="btn btn-primary" href="kaland.php">Tovább a kalandba →</a>
+        <?php else: ?>
+          <a class="btn" href="user.php#stories">Elmentve a profilodba</a>
+        <?php endif; ?>
       </div>
     </article>
   <?php endif; ?>

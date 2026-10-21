@@ -95,6 +95,8 @@ try {
     respond(['error' => app_config('app.debug') ? $ex->getMessage() : 'Adatbázis hiba.'], 500);
 }
 
+openday_mark('quiz');
+
 respond([
     'success'   => true,
     'dragon_id' => $dragonId,

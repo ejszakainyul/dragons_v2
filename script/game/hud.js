@@ -579,8 +579,10 @@ export class Hud {
         ${item('map', 'ᛜ', 'Világtérkép', 'a bejárt völgy, kattintással úti cél', 'M', battle || !this.mm)}
         ${item('music', '♫', `Zene: ${music?.enabled ? 'be' : 'ki'}`, 'saját dallamok napszak és harc szerint', '', !music)}
         ${item('sound', muted ? '🔇' : '🔊', `Hangok: ${muted ? 'ki' : 'be'}`, 'csapások, varázslatok, lépések')}
-        <a class="gmenu-item" href="user.php"><i class="gmenu-rune">ᛗ</i><span><b>Gyűjtemény</b><small>a sárkányaid a profilodon</small></span></a>
-        <a class="gmenu-item is-exit" href="index.php" data-m="exit"><i class="gmenu-rune">ᛞ</i><span><b>Kilépés</b><small>a játék magától ment — bármikor folytathatod</small></span></a>
+        ${this.demo
+          ? `<a class="gmenu-item is-exit" href="nyiltnap.php" data-m="exit"><i class="gmenu-rune">ᛟ</i><span><b>Vissza a túrához</b><small>a nyílt nap állomásai</small></span></a>`
+          : `<a class="gmenu-item" href="user.php"><i class="gmenu-rune">ᛗ</i><span><b>Gyűjtemény</b><small>a sárkányaid a profilodon</small></span></a>
+        <a class="gmenu-item is-exit" href="index.php" data-m="exit"><i class="gmenu-rune">ᛞ</i><span><b>Kilépés</b><small>a játék magától ment — bármikor folytathatod</small></span></a>`}
       </div>
       <div class="gmenu-keys">
         <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / nyilak — mozgás</span>

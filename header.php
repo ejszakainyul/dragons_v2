@@ -29,6 +29,18 @@ $navItems = [
     'story.php'   => ['Történet', 'ᚨ', 'Ansuz — Odin, a szó és a mese'],
 ];
 
+/* Nyílt nap: a menü helyett a túra állomásai, és egy sáv, ami mutatja,
+   hol tart a látogató és mi jön ezután (lásd inc/openday.php). */
+$demoMode = is_demo();
+if ($demoMode) {
+    $odRow    = openday_row(current_user_id());
+    $odDone   = openday_done($odRow);
+    $odNext   = openday_next($odDone);
+    $navItems = ['nyiltnap.php' => ['Túra', 'ᛟ', 'Othala — a nyílt nap túrája']];
+    foreach (OPENDAY_STEPS as $odKey => [$odTitle, $odPage, $odRune]) $navItems[$odPage] = [$odTitle, $odRune, $odTitle];
+    if (!in_array('style/openday.css', $pageStyles, true)) $pageStyles[] = 'style/openday.css';
+}
+
 /** Egy rúna-ikon a menühöz. */
 function nav_rune(string $rune, string $meaning): string
 {
@@ -116,10 +128,12 @@ function nav_rune(string $rune, string $meaning): string
       <!-- Csak mobilon: a fiók-műveletek is a lenyíló menübe kerülnek,
            hogy ne csússzanak ki a fejlécből -->
       <div class="nav-links-auth">
-        <?php if (is_logged_in()): ?>
+        <?php if ($demoMode): ?>
+        <?php elseif (is_logged_in()): ?>
           <a href="user.php"><?= nav_rune('ᛗ', 'Mannaz — az ember, önmagad') ?>Profil</a>
           <?php if (is_admin()): ?>
             <a href="dataeditor.php"><?= nav_rune('ᛉ', 'Algiz — oltalom') ?>Adatkezelő</a>
+            <a href="nyiltnap_admin.php"><?= nav_rune('ᛟ', 'Othala — a nyílt nap') ?>Nyílt nap</a>
           <?php endif; ?>
           <a href="logout.php"><?= nav_rune('ᚱ', 'Raidho — útra kelni') ?>Kilépés</a>
         <?php else: ?>
@@ -135,7 +149,12 @@ function nav_rune(string $rune, string $meaning): string
         <span class="sound-track"><span class="sound-knob"></span></span>
       </label>
 
-      <?php if (is_logged_in()): ?>
+      <?php if ($demoMode): ?>
+        <a class="nav-user" href="nyiltnap.php" title="A nyílt napi túrád">
+          <span class="nav-avatar"><?= e(mb_substr((string)($_SESSION['name'] ?? '?'), 0, 1)) ?></span>
+          <span class="nav-user-name"><?= e($_SESSION['name'] ?? '') ?> · <?= e($odRow['kod'] ?? '') ?></span>
+        </a>
+      <?php elseif (is_logged_in()): ?>
         <a class="nav-user" href="user.php">
           <span class="nav-avatar"><?= e(mb_substr((string)($_SESSION['name'] ?? '?'), 0, 1)) ?></span>
           <span class="nav-user-name"><?= e($_SESSION['name'] ?? '') ?></span>
@@ -156,6 +175,26 @@ function nav_rune(string $rune, string $meaning): string
 
   </div>
 </header>
+
+<?php if ($demoMode): ?>
+<script>window.OPENDAY = <?= json_encode(['epoch' => (int)($odRow['korszak'] ?? 0), 'done' => $odDone, 'here' => $navActive, 'steps' => array_map(static fn($st) => [$st[0], $st[1]], OPENDAY_STEPS)], JSON_UNESCAPED_UNICODE) ?>;</script>
+<script src="<?= asset('script/openday.js') ?>" defer></script>
+<?php if (!in_array($navActive, ['nyiltnap.php', 'kaland.php'], true)): ?>
+<div class="od-bar" id="odBar">
+  <div class="od-bar-in">
+    <a class="od-bar-home" href="nyiltnap.php" title="Vissza a túra kezdőlapjára">ᛟ <span>Túra</span></a>
+    <ol class="od-bar-steps">
+      <?php foreach (OPENDAY_STEPS as $odKey => [$odTitle, $odPage, $odRune]):
+        $odCls = in_array($odKey, $odDone, true) ? 'is-done' : ($odKey === $odNext ? 'is-next' : '');
+        if ($odPage === $navActive) $odCls .= ' is-here'; ?>
+        <li class="<?= trim($odCls) ?>" data-step="<?= e($odKey) ?>"><a href="<?= e($odPage) ?>"><i><?= $odRune ?></i><span><?= e($odTitle) ?></span></a></li>
+      <?php endforeach; ?>
+    </ol>
+    <a class="btn btn-sm btn-primary od-bar-next" id="odBarNext" href="nyiltnap.php" hidden>Tovább →</a>
+  </div>
+</div>
+<?php endif; ?>
+<?php endif; ?>
 
 <div id="youtubePlayer" hidden></div>
 

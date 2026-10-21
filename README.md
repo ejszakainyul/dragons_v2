@@ -442,6 +442,38 @@ ezek egyike sem hoz létre új sárkányt a közös adatbázisban.
 
 A `jatek.php` érintetlenül a Godot-modul bejárata maradt.
 
+## Nyílt nap — 16 bemutató fiók, vezetett túra (`nyiltnap.php`)
+
+Rendezvényre készült, korlátozott mód. A látogató a **nyiltnap.php** oldalon
+egyetlen rövid kóddal lép be (pl. `THOR4`, jelszó nincs), és öt állomáson
+megy végig, kb. negyedóra alatt:
+
+1. **A jóslat** (`quiz.php`) — a válaszaiból születik az első sárkánya
+2. **A műhely** (`nyitott.php`) — összerak egy másodikat
+3. **Az aréna** (`arena.php`) — egy csata más vikingek sárkányai ellen
+4. **A saga** (`story.php`) — a mesterséges intelligencia megírja a történetét
+5. **A kaland** (`kaland.php`) — csak a Mohos barlang (I.) nyitott, kóborló vadak
+   nélkül, 5 gyógyfűvel; a barlang után záróablak visz vissza a túrához (~8–10 perc)
+
+A bemutató fiók csak ezeket az oldalakat éri el (minden más a túra kezdőlapjára
+visz). A menü helyett a túra állomásai látszanak, alatta egy sáv mutatja, hol
+tart, és mi jön ezután.
+
+**Vezérlő (`nyiltnap_admin.php`, csak adminnak):** „Fiókok létrehozása" — 16 fiók
+(ODIN, THOR, LOKI… egy-egy véletlen számjeggyel; a kódok csak az adatbázisban és
+a kártyákon vannak). Élő haladás 5 mp-enként (ki hol tart, ki játszik épp),
+**nullázás** fiókonként vagy egyszerre, ki/bekapcsolás, nyomtatható kódkártyák.
+A nullázás nem lépteti ki a látogatót: a fiók „korszaka" lép, a nyitott oldala
+pár másodpercen belül magától a túra elejére ugrik, a játék régi mentését pedig
+a szerver elutasítja. A nap végén: „Mind ki" — a kódok onnantól nem működnek.
+
+Az AI-saga OpenAI-kulccsal fut (`OPENAI_API_KEY` vagy `config.local.php`); kulcs
+nélkül a beépített mesélő ír — a vezérlő tetején látszik, melyik működik.
+
+Fájlok: `inc/openday.php` (logika, őr), `nyiltnap.php`, `nyiltnap_admin.php`,
+`script/openday.js`, `script/openday_admin.js`, `style/openday.css`,
+`sql/migrate_openday.sql` (a tábla magától is létrejön).
+
 ## Technológiák
 
 PHP 8 · MySQL · HTML5 · CSS3 · vanilla JavaScript · Godot Engine (játékmodul)
